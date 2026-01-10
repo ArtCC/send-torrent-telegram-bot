@@ -1,5 +1,9 @@
 # Send Torrent Telegram Bot 🤖
 
+<a href="https://github.com/ArtCC/send-torrent-telegram-bot/blob/main/assets/send-torrent-telegram-bot.png">
+  <img src="https://raw.githubusercontent.com/ArtCC/send-torrent-telegram-bot/main/assets/send-torrent-telegram-bot.png" alt="Bot Icon" width="120" align="right">
+</a>
+
 A simple and secure Telegram bot that receives `.torrent` files and saves them to a shared folder monitored by your torrent client (qBittorrent, Transmission, etc.).
 
 Perfect for managing your torrents remotely through Telegram!
