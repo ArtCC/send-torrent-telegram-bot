@@ -1,4 +1,4 @@
-# Telegram Torrent Bot 🤖
+# Send Torrent Telegram Bot 🤖
 
 A simple and secure Telegram bot that receives `.torrent` files and saves them to a shared folder monitored by your torrent client (qBittorrent, Transmission, etc.).
 
@@ -35,8 +35,8 @@ Perfect for managing your torrents remotely through Telegram!
 ### 2. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/telegram-torrent-bot.git
-cd telegram-torrent-bot
+git clone https://github.com/yourusername/send-torrent-telegram-bot.git
+cd send-torrent-telegram-bot
 ```
 
 ### 3. Configure Environment Variables
@@ -72,7 +72,7 @@ docker-compose up -d
 ### 5. Verify the Bot is Running
 
 ```bash
-docker logs telegram-torrent-bot
+docker logs send-torrent-telegram-bot
 ```
 
 You should see: `Bot is running...`
@@ -116,9 +116,9 @@ services:
       - "8080:8080"
     restart: unless-stopped
 
-  telegram-torrent-bot:
-    image: ghcr.io/yourusername/telegram-torrent-bot:latest
-    container_name: telegram-torrent-bot
+  send-torrent-telegram-bot:
+    image: ghcr.io/yourusername/send-torrent-telegram-bot:latest
+    container_name: send-torrent-telegram-bot
     env_file:
       - .env
     volumes:
@@ -139,7 +139,7 @@ transmission-remote --watch-dir-enabled
 
 1. Go to your Portainer instance
 2. Navigate to **Stacks** → **Add Stack**
-3. Name it: `telegram-torrent-bot`
+3. Name it: `send-torrent-telegram-bot`
 4. Paste the contents of `docker-compose.yml`
 5. Add your environment variables in the "Environment variables" section
 6. Click **Deploy the stack**
@@ -205,7 +205,7 @@ Or in Portainer: Click on your stack → **Pull and redeploy**
 ### Bot doesn't respond
 
 - Check if the container is running: `docker ps`
-- Check logs: `docker logs telegram-torrent-bot`
+- Check logs: `docker logs send-torrent-telegram-bot`
 - Verify your bot token is correct
 - Ensure the bot is not rate-limited by Telegram
 
@@ -239,10 +239,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## 🙏 Acknowledgments
 
 - [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) - Excellent Telegram Bot API wrapper
@@ -253,9 +249,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 If you encounter any issues or have questions:
 
 1. Check the [Troubleshooting](#-troubleshooting) section
-2. Search existing [GitHub Issues](https://github.com/yourusername/telegram-torrent-bot/issues)
+2. Search existing [GitHub Issues](https://github.com/yourusername/send-torrent-telegram-bot/issues)
 3. Open a new issue with detailed information
+
+## 📄 License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-**Made with ❤️ for the self-hosted community**
+<p align="left">
+  <sub>100% built with GitHub Copilot (Claude Sonnet 4.5)</sub><br>
+  <sub>Arturo Carretero Calvo — 2026</sub>
+</p>
