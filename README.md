@@ -58,9 +58,6 @@ ALLOWED_CHAT_IDS=123456789,987654321
 
 # Path to your torrent client's watch folder
 TORRENT_WATCH_PATH=/path/to/qbittorrent/watch
-
-# Your GitHub username (for pulling images)
-GITHUB_REPOSITORY_OWNER=yourusername
 ```
 
 ### 4. Deploy with Docker Compose
