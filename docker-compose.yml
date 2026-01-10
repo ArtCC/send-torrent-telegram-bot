@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  telegram-torrent-bot:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-yourusername}/telegram-torrent-bot:latest
+    container_name: telegram-torrent-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - ALLOWED_CHAT_IDS=${ALLOWED_CHAT_IDS}
+      - WATCH_FOLDER=/watch
+    volumes:
+      # Mount the watch folder - this should be the same folder your torrent client monitors
+      - ${TORRENT_WATCH_PATH:-./watch}:/watch
+    networks:
+      - torrent-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  torrent-network:
+    driver: bridge
