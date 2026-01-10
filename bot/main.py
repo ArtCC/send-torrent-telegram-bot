@@ -86,7 +86,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     welcome_message = (
         f"╔═══════════════════════╗\n"
-        f"     🤖 *TORRENT BOT*     \n"
+        f"   🤖 *SEND TORRENT BOT*   \n"
         f"╚═══════════════════════╝\n\n"
         f"👋 Welcome *{user_name}*\\!\n\n"
         f"I help you manage torrents remotely\\.\n"
