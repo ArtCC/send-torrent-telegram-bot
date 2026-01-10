@@ -123,15 +123,6 @@ services:
     restart: unless-stopped
 ```
 
-### Transmission
-
-Set the watch directory in Transmission settings:
-
-```bash
-transmission-remote --watch-dir /path/to/watch
-transmission-remote --watch-dir-enabled
-```
-
 ## 📦 Installing via Portainer
 
 1. Go to your Portainer instance
