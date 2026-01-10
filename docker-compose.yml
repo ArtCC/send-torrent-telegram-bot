@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  telegram-torrent-bot:
+  send-torrent-telegram-bot:
     image: ghcr.io/artcc/send-torrent-telegram-bot:latest
     container_name: send-torrent-telegram-bot
     restart: unless-stopped

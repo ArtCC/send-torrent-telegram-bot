@@ -35,7 +35,7 @@ Perfect for managing your torrents remotely through Telegram!
 ### 2. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/send-torrent-telegram-bot.git
+git clone https://github.com/artcc/send-torrent-telegram-bot.git
 cd send-torrent-telegram-bot
 ```
 
@@ -114,7 +114,7 @@ services:
     restart: unless-stopped
 
   send-torrent-telegram-bot:
-    image: ghcr.io/yourusername/send-torrent-telegram-bot:latest
+    image: ghcr.io/artcc/send-torrent-telegram-bot:latest
     container_name: send-torrent-telegram-bot
     env_file:
       - .env
@@ -246,7 +246,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 If you encounter any issues or have questions:
 
 1. Check the [Troubleshooting](#-troubleshooting) section
-2. Search existing [GitHub Issues](https://github.com/yourusername/send-torrent-telegram-bot/issues)
+2. Search existing [GitHub Issues](https://github.com/artcc/send-torrent-telegram-bot/issues)
 3. Open a new issue with detailed information
 
 ## 📄 License
