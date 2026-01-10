@@ -227,6 +227,16 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
+## 🎨 Bot Icon
+
+Want to set a custom icon for your bot in Telegram? Download the high-resolution icon and send it to [@BotFather](https://t.me/BotFather) using the `/setuserpic` command.
+
+<p align="center">
+  <a href="https://github.com/ArtCC/send-torrent-telegram-bot/blob/main/assets/send-torrent-telegram-bot.png">
+    <img src="https://raw.githubusercontent.com/ArtCC/send-torrent-telegram-bot/main/assets/send-torrent-telegram-bot.png" alt="Bot Icon" width="200">
+  </a>
+</p>
+
 ## 🙏 Acknowledgments
 
 - [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) - Excellent Telegram Bot API wrapper
