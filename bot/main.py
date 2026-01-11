@@ -5,13 +5,11 @@ Receives .torrent files and saves them to a shared folder for torrent clients.
 """
 
 import os
-import logging
 import asyncio
 import json
 import feedparser
 from pathlib import Path
 from typing import Dict, List, Optional
-from dataclasses import dataclass
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.ext import (
@@ -23,241 +21,22 @@ from telegram.ext import (
     CallbackQueryHandler,
 )
 
-# Configure logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+# Import configuration and models
+from bot.config import (
+    logger,
+    TELEGRAM_BOT_TOKEN,
+    ALLOWED_CHAT_IDS,
+    WATCH_FOLDER,
+    RSS_STORAGE_FILE,
+    BATCH_TIMEOUT,
 )
-logger = logging.getLogger(__name__)
-
-# Reduce httpx logging verbosity (suppress polling requests)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-
-# Configuration from environment variables
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-ALLOWED_CHAT_IDS = os.getenv("ALLOWED_CHAT_IDS", "").split(",")
-WATCH_FOLDER = os.getenv("WATCH_FOLDER", "/watch")
-RSS_STORAGE_FILE = os.getenv("RSS_STORAGE_FILE", "rss_urls.json")
-
-# Batch processing configuration
-BATCH_TIMEOUT = 2.0  # seconds to wait for more files
-batch_queues: Dict[int, List["TorrentFile"]] = {}
-batch_tasks: Dict[int, asyncio.Task] = {}
+from bot.models import TorrentFile, batch_queues, batch_tasks
+from bot.utils import escape_markdown_v2, is_authorized, get_main_menu_keyboard, get_back_keyboard
+from bot.services import load_rss_urls, save_rss_url, delete_rss_url, get_rss_url
+from bot.handlers import start_command, help_command, status_command, menu_command
 
 
-@dataclass
-class TorrentFile:
-    """Represents a torrent file to be processed."""
-    name: str
-    size: float  # in KB
-    success: bool
-    error: str = ""
-
-# Validate configuration
-if not TELEGRAM_BOT_TOKEN:
-    raise ValueError("TELEGRAM_BOT_TOKEN environment variable is required")
-
-if not ALLOWED_CHAT_IDS or ALLOWED_CHAT_IDS == [""]:
-    raise ValueError("ALLOWED_CHAT_IDS environment variable is required")
-
-# Convert chat IDs to integers and filter empty strings
-ALLOWED_CHAT_IDS = [int(chat_id.strip()) for chat_id in ALLOWED_CHAT_IDS if chat_id.strip()]
-
-# Ensure watch folder exists
-Path(WATCH_FOLDER).mkdir(parents=True, exist_ok=True)
-
-logger.info(f"Bot configured with {len(ALLOWED_CHAT_IDS)} allowed chat ID(s)")
-logger.info(f"Watch folder: {WATCH_FOLDER}")
-
-
-# ==================== RSS Storage Functions ====================
-
-def load_rss_urls() -> Dict[int, str]:
-    """Load RSS URLs from JSON file."""
-    try:
-        if os.path.exists(RSS_STORAGE_FILE):
-            with open(RSS_STORAGE_FILE, 'r') as f:
-                data = json.load(f)
-                # Convert string keys back to integers
-                return {int(k): v for k, v in data.items()}
-        return {}
-    except Exception as e:
-        logger.error(f"Error loading RSS URLs: {e}")
-        return {}
-
-
-def save_rss_url(chat_id: int, rss_url: str) -> None:
-    """Save RSS URL for a chat ID."""
-    try:
-        urls = load_rss_urls()
-        urls[chat_id] = rss_url
-        # Convert integer keys to strings for JSON
-        with open(RSS_STORAGE_FILE, 'w') as f:
-            json.dump({str(k): v for k, v in urls.items()}, f, indent=2)
-        logger.info(f"RSS URL saved for chat ID {chat_id}")
-    except Exception as e:
-        logger.error(f"Error saving RSS URL: {e}")
-        raise
-
-
-def delete_rss_url(chat_id: int) -> bool:
-    """Delete RSS URL for a chat ID. Returns True if deleted, False if not found."""
-    try:
-        urls = load_rss_urls()
-        if chat_id in urls:
-            del urls[chat_id]
-            with open(RSS_STORAGE_FILE, 'w') as f:
-                json.dump({str(k): v for k, v in urls.items()}, f, indent=2)
-            logger.info(f"RSS URL deleted for chat ID {chat_id}")
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"Error deleting RSS URL: {e}")
-        return False
-
-
-def get_rss_url(chat_id: int) -> Optional[str]:
-    """Get RSS URL for a chat ID."""
-    urls = load_rss_urls()
-    return urls.get(chat_id)
-
-
-# ==================== Authorization & Menu ====================
-
-def escape_markdown_v2(text: str) -> str:
-    """Escape special characters for MarkdownV2."""
-    special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
-    for char in special_chars:
-        text = text.replace(char, f'\\{char}')
-    return text
-
-
-def is_authorized(chat_id: int) -> bool:
-    """Check if the chat ID is authorized to use the bot."""
-    return chat_id in ALLOWED_CHAT_IDS
-
-
-def get_main_menu_keyboard(chat_id: Optional[int] = None) -> InlineKeyboardMarkup:
-    """Create the main menu keyboard with inline buttons."""
-    keyboard = [
-        [
-            InlineKeyboardButton("ℹ️ Help", callback_data="help"),
-            InlineKeyboardButton("📊 Status", callback_data="status"),
-        ],
-        [
-            InlineKeyboardButton("📋 How to Use", callback_data="howto"),
-            InlineKeyboardButton("🔑 My Chat ID", callback_data="chatid"),
-        ],
-    ]
-    
-    # Add RSS button if user has RSS configured
-    if chat_id and get_rss_url(chat_id):
-        keyboard.append([
-            InlineKeyboardButton("📡 Browse RSS Feed", callback_data="rss_browse")
-        ])
-    
-    return InlineKeyboardMarkup(keyboard)
-
-
-def get_back_keyboard() -> InlineKeyboardMarkup:
-    """Create a keyboard with a back button."""
-    keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]]
-    return InlineKeyboardMarkup(keyboard)
-
-
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /start command."""
-    chat_id = update.effective_chat.id
-    user_name = update.effective_user.first_name or "User"
-
-    logger.info(f"Start command received from chat ID: {chat_id}")
-
-    is_auth = is_authorized(chat_id)
-    auth_emoji = "✅" if is_auth else "⚠️"
-
-    welcome_message = (
-        f"╔═══════════════════════╗\n"
-        f"   🤖 *SEND TORRENT BOT*   \n"
-        f"╚═══════════════════════╝\n\n"
-        f"👋 Welcome *{user_name}*\\!\n\n"
-        f"I help you manage torrents remotely\\.\n"
-        f"Just send me a `.torrent` file and I'll\n"
-        f"handle the rest\\! 🚀\n\n"
-        f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
-        f"  {auth_emoji} *Authorization Status*\n"
-        f"     {'`AUTHORIZED`' if is_auth else '`NOT AUTHORIZED`'}\n"
-        f"┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-        f"💡 Use the menu below to get started\\!"
-    )
-
-    await update.message.reply_text(
-        welcome_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(chat_id)
-    )
-
-
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /help command."""
-    help_message = (
-        "╔═══════════════════════╗\n"
-        "       📖 *HELP GUIDE*       \n"
-        "╚═══════════════════════╝\n\n"
-        "*Available Commands:*\n\n"
-        "🏠 `/start` \\- Main menu \\& welcome\n"
-        "❓ `/help` \\- Show this help guide\n"
-        "📊 `/status` \\- Check bot status\n"
-        "🔍 `/menu` \\- Show interactive menu\n"
-        "📡 `/setrss <URL>` \\- Set RSS feed\n"
-        "🔎 `/browse` \\- Browse RSS feed\n"
-        "🗑️ `/clearrss` \\- Remove RSS feed\n\n"
-        "━━━━━━━━━━━━━━━━━━━━\n\n"
-        "*Quick Actions:*\n\n"
-        "• Send any `.torrent` file\n"
-        "• Use the menu buttons\n"
-        "• Check your authorization\n"
-        "• Browse your RSS feed\n\n"
-        "💡 *Tip:* Keep your chat ID safe\\!"
-    )
-
-    await update.message.reply_text(
-        help_message, parse_mode="MarkdownV2", reply_markup=get_back_keyboard()
-    )
-
-
-async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /status command."""
-    chat_id = update.effective_chat.id
-    is_auth = is_authorized(chat_id)
-
-    auth_icon = "✅" if is_auth else "❌"
-    auth_text = "AUTHORIZED" if is_auth else "NOT AUTHORIZED"
-
-    # Count torrent files in watch folder
-    try:
-        torrent_count = len([f for f in os.listdir(WATCH_FOLDER) if f.endswith(".torrent")])
-    except:
-        torrent_count = 0
-
-    status_message = (
-        f"╔═══════════════════════╗\n"
-        f"      📊 *BOT STATUS*      \n"
-        f"╚═══════════════════════╝\n\n"
-        f"🟢 *System:* `ONLINE`\n\n"
-        f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
-        f"  🔑 *Your Access*\n"
-        f"     {auth_icon} `{auth_text}`\n"
-        f"┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-        f"📁 *Watch Folder:*\n"
-        f"   `{WATCH_FOLDER}`\n\n"
-        f"📊 *Statistics:*\n"
-        f"   • Authorized Users: `{len(ALLOWED_CHAT_IDS)}`\n"
-        f"   • Torrents in Queue: `{torrent_count}`\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"🕐 Last checked: `Now`"
-    )
-
-    await update.message.reply_text(
-        status_message, parse_mode="MarkdownV2", reply_markup=get_back_keyboard()
-    )
-
+# ==================== Document Handlers ====================
 
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle document/file messages."""
@@ -454,22 +233,6 @@ async def send_batch_summary(update: Update, context: ContextTypes.DEFAULT_TYPE,
         pass
     except Exception as e:
         logger.error(f"Error sending batch summary: {e}")
-
-
-async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /menu command."""
-    chat_id = update.effective_chat.id
-    menu_message = (
-        "╔═══════════════════════╗\n"
-        "       🎯 *MAIN MENU*       \n"
-        "╚═══════════════════════╝\n\n"
-        "Select an option below:\n\n"
-        "━━━━━━━━━━━━━━━━━━━━"
-    )
-
-    await update.message.reply_text(
-        menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(chat_id)
-    )
 
 
 # ==================== RSS Commands ====================
@@ -726,7 +489,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             "━━━━━━━━━━━━━━━━━━━━"
         )
         await query.edit_message_text(
-            menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(chat_id)
+            menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=bool(get_rss_url(chat_id)))
         )
     
     elif query.data == "rss_browse":
