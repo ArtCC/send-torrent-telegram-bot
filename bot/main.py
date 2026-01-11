@@ -632,16 +632,18 @@ async def browse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         escaped_title = escape_markdown_v2(feed_title)
         
         total_text = f"{len(entries)} torrent" if len(entries) == 1 else f"{len(entries)} torrents"
+        selected_text = f" \\| Selected: `{len(selected)}`" if selected else ""
         
         await loading_msg.edit_text(
             "╔═══════════════════════╗\n"
             "      📡 *RSS FEED*      \n"
             "╚═══════════════════════╝\n\n"
             f"🎯 *{escaped_title}*\n\n"
-            f"📊 Total: `{total_text}`\n"
+            f"📊 Total: `{total_text}`{selected_text}\n"
             f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
             "━━━━━━━━━━━━━━━━━━━━\n\n"
-            "👇 Click any torrent to download:",
+            "☐ Click to select \\| ✅ Selected\n"
+            "👇 Choose torrents to download:",
             parse_mode="MarkdownV2",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -762,47 +764,62 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             # Get ALL entries (no limit)
             entries = feed.entries
             
-            # Create buttons for each entry with visual indicators
-            keyboard = []
-            for idx, entry in enumerate(entries, 1):
-                title = entry.get('title', 'Unknown')
-                category = entry.get('category', '')
-                
-                # Add emoji based on category
-                emoji = "📺" if "series" in category.lower() else "🎬" if "pel" in category.lower() else "📦"
-                
-                # Truncate title if too long (leave space for emoji)
-                max_length = 60
-                if len(title) > max_length:
-                    title = title[:max_length-3] + "..."
-                
-                keyboard.append([
-                    InlineKeyboardButton(
-                        f"{emoji} {title}",
-                        callback_data=f"rss_dl_{idx-1}"
-                    )
-                ])
+        # Initialize selection set if not exists
+        if 'rss_selected' not in context.user_data:
+            context.user_data['rss_selected'] = set()
+        
+        selected = context.user_data['rss_selected']
+        
+        # Create buttons for each entry with visual indicators
+        keyboard = []
+        for idx, entry in enumerate(entries, 1):
+            title = entry.get('title', 'Unknown')
+            category = entry.get('category', '')
             
-            # Add back button
-            keyboard.append([InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")])
+            # Add emoji based on category
+            emoji = "📺" if "series" in category.lower() else "🎬" if "pel" in category.lower() else "📦"
             
-            # Store feed entries in context for callback
-            context.user_data['rss_entries'] = entries
+            # Add checkbox indicator
+            checkbox = "✅" if (idx-1) in selected else "☐"
+            
+            # Truncate title if too long (leave space for emoji and checkbox)
+            max_length = 55
+            if len(title) > max_length:
+                title = title[:max_length-3] + "..."
+            
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"{checkbox} {emoji} {title}",
+                    callback_data=f"rss_toggle_{idx-1}"
+                )
+            ])
+        
+        # Add action buttons
+        action_buttons = []
+        if selected:
+            action_buttons.append(InlineKeyboardButton(
+                f"⬇️ Download ({len(selected)})",
+                callback_data="rss_download_selected"
+            ))
+        action_buttons.append(InlineKeyboardButton("🔙 Back", callback_data="menu"))
+        keyboard.append(action_buttons)
             
             feed_title = feed.feed.get('title', 'RSS Feed')
             escaped_title = escape_markdown_v2(feed_title)
             
             total_text = f"{len(entries)} torrent" if len(entries) == 1 else f"{len(entries)} torrents"
+            selected_text = f" \\| Selected: `{len(selected)}`" if selected else ""
             
             await query.edit_message_text(
                 "╔═══════════════════════╗\n"
                 "      📡 *RSS FEED*      \n"
                 "╚═══════════════════════╝\n\n"
                 f"🎯 *{escaped_title}*\n\n"
-                f"📊 Total: `{total_text}`\n"
+                f"📊 Total: `{total_text}`{selected_text}\n"
                 f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
                 "━━━━━━━━━━━━━━━━━━━━\n\n"
-                "👇 Click any torrent to download:",
+                "☐ Click to select \\| ✅ Selected\n"
+                "👇 Choose torrents to download:",
                 parse_mode="MarkdownV2",
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
@@ -817,83 +834,180 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 reply_markup=get_back_keyboard()
             )
     
-    elif query.data.startswith("rss_dl_"):
-        # Handle RSS torrent download
+    elif query.data.startswith("rss_toggle_"):
+        # Handle RSS torrent selection toggle
         try:
             idx = int(query.data.split("_")[2])
+            
+            # Toggle selection
+            if 'rss_selected' not in context.user_data:
+                context.user_data['rss_selected'] = set()
+            
+            selected = context.user_data['rss_selected']
+            if idx in selected:
+                selected.remove(idx)
+                await query.answer("☐ Unselected")
+            else:
+                selected.add(idx)
+                await query.answer("✅ Selected")
+            
+            # Refresh the list to show updated checkboxes
             entries = context.user_data.get('rss_entries', [])
             
-            if idx >= len(entries):
-                await query.answer("❌ Torrent not found!", show_alert=True)
+            # Rebuild keyboard with updated selections
+            keyboard = []
+            for i, entry in enumerate(entries, 1):
+                title = entry.get('title', 'Unknown')
+                category = entry.get('category', '')
+                
+                emoji = "📺" if "series" in category.lower() else "🎬" if "pel" in category.lower() else "📦"
+                checkbox = "✅" if (i-1) in selected else "☐"
+                
+                max_length = 55
+                if len(title) > max_length:
+                    title = title[:max_length-3] + "..."
+                
+                keyboard.append([
+                    InlineKeyboardButton(
+                        f"{checkbox} {emoji} {title}",
+                        callback_data=f"rss_toggle_{i-1}"
+                    )
+                ])
+            
+            # Add action buttons
+            action_buttons = []
+            if selected:
+                action_buttons.append(InlineKeyboardButton(
+                    f"⬇️ Download ({len(selected)})",
+                    callback_data="rss_download_selected"
+                ))
+            action_buttons.append(InlineKeyboardButton("🔙 Back", callback_data="menu"))
+            keyboard.append(action_buttons)
+            
+            # Update message
+            feed = feedparser.parse(get_rss_url(chat_id))
+            feed_title = feed.feed.get('title', 'RSS Feed')
+            escaped_title = escape_markdown_v2(feed_title)
+            
+            total_text = f"{len(entries)} torrent" if len(entries) == 1 else f"{len(entries)} torrents"
+            selected_text = f" \\| Selected: `{len(selected)}`" if selected else ""
+            
+            await query.edit_message_text(
+                "╔═══════════════════════╗\n"
+                "      📡 *RSS FEED*      \n"
+                "╚═══════════════════════╝\n\n"
+                f"🎯 *{escaped_title}*\n\n"
+                f"📊 Total: `{total_text}`{selected_text}\n"
+                f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
+                "━━━━━━━━━━━━━━━━━━━━\n\n"
+                "☐ Click to select \\| ✅ Selected\n"
+                "👇 Choose torrents to download:",
+                parse_mode="MarkdownV2",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+            
+        except Exception as e:
+            logger.error(f"Error toggling RSS selection: {e}")
+            await query.answer("❌ Error updating selection", show_alert=True)
+    
+    elif query.data == "rss_download_selected":
+        # Handle downloading selected torrents
+        try:
+            selected = context.user_data.get('rss_selected', set())
+            entries = context.user_data.get('rss_entries', [])
+            
+            if not selected:
+                await query.answer("⚠️ No torrents selected!", show_alert=True)
                 return
             
-            entry = entries[idx]
-            torrent_url = entry.get('link', '')
-            torrent_title = entry.get('title', 'Unknown')
+            await query.answer(f"⬇️ Downloading {len(selected)} torrent(s)...")
             
-            if not torrent_url:
-                await query.answer("❌ Invalid torrent link!", show_alert=True)
-                return
-            
-            # Show loading
-            await query.answer("⬇️ Downloading torrent...")
-            
-            # Download the torrent file from RSS
             import urllib.request
             import tempfile
             
-            # Create temp file
-            with tempfile.NamedTemporaryFile(suffix='.torrent', delete=False) as temp_file:
-                temp_path = temp_file.name
+            downloaded = []
+            failed = []
             
-            try:
-                # Download torrent
-                urllib.request.urlretrieve(torrent_url, temp_path)
+            for idx in selected:
+                if idx >= len(entries):
+                    continue
                 
-                # Read file and save to watch folder
-                file_name = f"{torrent_title[:100]}.torrent".replace('/', '_').replace('\\', '_')
-                file_path = os.path.join(WATCH_FOLDER, file_name)
+                entry = entries[idx]
+                torrent_url = entry.get('link', '')
+                torrent_title = entry.get('title', 'Unknown')
                 
-                # Copy to watch folder
-                with open(temp_path, 'rb') as src:
-                    with open(file_path, 'wb') as dst:
-                        dst.write(src.read())
+                if not torrent_url:
+                    failed.append(torrent_title)
+                    continue
                 
-                # Get file size
-                file_size = os.path.getsize(file_path) / 1024  # KB
-                
-                logger.info(f"RSS torrent downloaded: {file_name} (from {user_name}, chat ID: {chat_id})")
-                
-                # Escape title for MarkdownV2
-                escaped_title = torrent_title.replace('_', '\\_').replace('.', '\\.').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)').replace('-', '\\-').replace('!', '\\!')
-                
-                await query.edit_message_text(
-                    "╔═══════════════════════╗\n"
-                    "      ✅ *SUCCESS\\!*      \n"
-                    "╚═══════════════════════╝\n\n"
-                    "🎉 Torrent downloaded from RSS\\!\n\n"
-                    "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-                    "  📁 *Torrent Details*\n"
-                    f"  • Name: `{file_name}`\n"
-                    f"  • Size: `{file_size:.2f} KB`\n"
-                    "  • Status: `QUEUED`\n"
-                    "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-                    "🚀 Your torrent client will pick\n"
-                    "it up automatically\\!\n\n"
-                    "━━━━━━━━━━━━━━━━━━━━\n"
-                    f"💚 Happy downloading, *{user_name}*\\!",
-                    parse_mode="MarkdownV2",
-                    reply_markup=get_back_keyboard()
-                )
-                
-            finally:
-                # Clean up temp file
-                if os.path.exists(temp_path):
-                    os.unlink(temp_path)
+                try:
+                    # Download torrent
+                    with tempfile.NamedTemporaryFile(suffix='.torrent', delete=False) as temp_file:
+                        temp_path = temp_file.name
+                    
+                    urllib.request.urlretrieve(torrent_url, temp_path)
+                    
+                    # Save to watch folder
+                    file_name = f"{torrent_title[:100]}.torrent".replace('/', '_').replace('\\', '_')
+                    file_path = os.path.join(WATCH_FOLDER, file_name)
+                    
+                    with open(temp_path, 'rb') as src:
+                        with open(file_path, 'wb') as dst:
+                            dst.write(src.read())
+                    
+                    file_size = os.path.getsize(file_path) / 1024  # KB
+                    downloaded.append((file_name, file_size))
+                    
+                    logger.info(f"RSS torrent downloaded: {file_name} (from {user_name}, chat ID: {chat_id})")
+                    
+                    if os.path.exists(temp_path):
+                        os.unlink(temp_path)
+                        
+                except Exception as e:
+                    logger.error(f"Error downloading {torrent_title}: {e}")
+                    failed.append(torrent_title)
+            
+            # Clear selection
+            context.user_data['rss_selected'] = set()
+            
+            # Build summary message
+            file_list = ""
+            for idx, (name, size) in enumerate(downloaded, 1):
+                escaped_name = escape_markdown_v2(name)
+                file_list += f"{idx}\\. Name: `{escaped_name}`\n"
+                file_list += f"   Size: `{size:.2f} KB`\n"
+                file_list += f"   Status: `QUEUED`\n"
+                if idx < len(downloaded):
+                    file_list += "\n"
+            
+            if failed:
+                file_list += "\n\n*Failed:*\n"
+                for idx, name in enumerate(failed, 1):
+                    escaped_name = escape_markdown_v2(name)
+                    file_list += f"{idx}\\. `{escaped_name}`\n"
+            
+            success_msg = "torrent" if len(downloaded) == 1 else "torrents"
+            
+            await query.edit_message_text(
+                "╔═══════════════════════╗\n"
+                "      ✅ *SUCCESS\\!*      \n"
+                "╚═══════════════════════╝\n\n"
+                f"🎉 {len(downloaded)} {success_msg} downloaded from RSS\\!\n\n"
+                "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+                "  📁 *Downloaded Files*\n\n"
+                f"{file_list}"
+                "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+                "🚀 Your torrent client will pick\n"
+                "them up automatically\\!\n\n"
+                "━━━━━━━━━━━━━━━━━━━━\n"
+                f"💚 Happy downloading, *{user_name}*\\!",
+                parse_mode="MarkdownV2",
+                reply_markup=get_back_keyboard()
+            )
             
         except Exception as e:
-            logger.error(f"Error downloading RSS torrent: {e}")
-            await query.answer("❌ Error downloading torrent!", show_alert=True)
+            logger.error(f"Error downloading selected torrents: {e}")
+            await query.answer("❌ Error downloading torrents!", show_alert=True)
 
     elif query.data == "help":
         help_message = (
