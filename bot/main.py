@@ -6,7 +6,10 @@ Receives .torrent files and saves them to a shared folder for torrent clients.
 
 import os
 import logging
+import asyncio
 from pathlib import Path
+from typing import Dict, List
+from dataclasses import dataclass
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.ext import (
     Application,
@@ -30,6 +33,20 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 ALLOWED_CHAT_IDS = os.getenv("ALLOWED_CHAT_IDS", "").split(",")
 WATCH_FOLDER = os.getenv("WATCH_FOLDER", "/watch")
+
+# Batch processing configuration
+BATCH_TIMEOUT = 2.0  # seconds to wait for more files
+batch_queues: Dict[int, List["TorrentFile"]] = {}
+batch_tasks: Dict[int, asyncio.Task] = {}
+
+
+@dataclass
+class TorrentFile:
+    """Represents a torrent file to be processed."""
+    name: str
+    size: float  # in KB
+    success: bool
+    error: str = ""
 
 # Validate configuration
 if not TELEGRAM_BOT_TOKEN:
@@ -208,74 +225,157 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         )
         return
 
-    # Send processing message
-    processing_msg = await update.message.reply_text(
-        "⏳ *Processing\\.\\.\\.*\n\n" "📥 Receiving your torrent file\\.\\.\\.",
-        parse_mode="MarkdownV2",
-    )
-
+    # Process the torrent file
     try:
-        # Download the file
         file = await context.bot.get_file(document.file_id)
         file_path = os.path.join(WATCH_FOLDER, file_name)
-
         await file.download_to_drive(file_path)
-
+        
         logger.info(f"Torrent file saved: {file_name} (from {user_name}, chat ID: {chat_id})")
+        
+        torrent_file = TorrentFile(name=file_name, size=file_size, success=True)
+        
+    except Exception as e:
+        logger.error(f"Error saving torrent file: {e}")
+        torrent_file = TorrentFile(name=file_name, size=file_size, success=False, error=str(e))
+    
+    # Add to batch queue
+    if chat_id not in batch_queues:
+        batch_queues[chat_id] = []
+    batch_queues[chat_id].append(torrent_file)
+    
+    # Cancel existing batch task if any
+    if chat_id in batch_tasks:
+        batch_tasks[chat_id].cancel()
+    
+    # Create new batch task
+    batch_tasks[chat_id] = asyncio.create_task(
+        send_batch_summary(update, context, chat_id, user_name)
+    )
 
-        # Delete processing message
-        await processing_msg.delete()
 
-        # Send success message
-        success_message = (
+async def send_batch_summary(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, user_name: str) -> None:
+    """Send summary of batched torrent files after timeout."""
+    try:
+        await asyncio.sleep(BATCH_TIMEOUT)
+        
+        # Get all files from queue
+        files = batch_queues.get(chat_id, [])
+        if not files:
+            return
+        
+        # Clear queue
+        batch_queues[chat_id] = []
+        if chat_id in batch_tasks:
+            del batch_tasks[chat_id]
+        
+        # Count successes and failures
+        successful = [f for f in files if f.success]
+        failed = [f for f in files if not f.success]
+        
+        # If only one file, use original format
+        if len(files) == 1:
+            file = files[0]
+            if file.success:
+                success_message = (
+                    f"╔═══════════════════════╗\n"
+                    f"      ✅ *SUCCESS\\!*      \n"
+                    f"╚═══════════════════════╝\n\n"
+                    f"🎉 Torrent received and saved\\!\n\n"
+                    f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
+                    f"  📁 *File Details*\n"
+                    f"  • Name: `{file.name}`\n"
+                    f"  • Size: `{file.size:.2f} KB`\n"
+                    f"  • Status: `QUEUED`\n"
+                    f"┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+                    f"🚀 Your torrent client will pick\n"
+                    f"it up automatically\\!\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    f"💚 Happy downloading, *{user_name}*\\!"
+                )
+                keyboard = [
+                    [
+                        InlineKeyboardButton("📊 Check Status", callback_data="status"),
+                        InlineKeyboardButton("🔙 Menu", callback_data="menu"),
+                    ]
+                ]
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=success_message,
+                    parse_mode="MarkdownV2",
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+            else:
+                keyboard = [[InlineKeyboardButton("🔄 Try Again", callback_data="menu")]]
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=(
+                        "╔═══════════════════════╗\n"
+                        "        ❌ *ERROR*        \n"
+                        "╚═══════════════════════╝\n\n"
+                        "⚠️ Failed to save the torrent\n"
+                        "file\\. Please try again\\.\n\n"
+                        "🔧 If the problem persists,\n"
+                        "contact the administrator\\."
+                    ),
+                    parse_mode="MarkdownV2",
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+            return
+        
+        # Multiple files - create batch summary
+        total_size = sum(f.size for f in successful)
+        
+        # Build file list
+        file_list = ""
+        for f in successful:
+            escaped_name = f.name.replace('_', '\\_').replace('.', '\\.')
+            file_list += f"  • `{escaped_name}` \\({f.size:.2f} KB\\)\n"
+        
+        if failed:
+            file_list += "\n*Failed:*\n"
+            for f in failed:
+                escaped_name = f.name.replace('_', '\\_').replace('.', '\\.')
+                file_list += f"  • `{escaped_name}` ❌\n"
+        
+        summary_message = (
             f"╔═══════════════════════╗\n"
             f"      ✅ *SUCCESS\\!*      \n"
             f"╚═══════════════════════╝\n\n"
-            f"🎉 Torrent received and saved\\!\n\n"
+            f"🎉 Multiple torrents received\\!\n\n"
             f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
-            f"  📁 *File Details*\n"
-            f"  • Name: `{file_name}`\n"
-            f"  • Size: `{file_size:.2f} KB`\n"
-            f"  • Status: `QUEUED`\n"
+            f"  📁 *Files Processed*\n"
+            f"  • Total: `{len(files)}`\n"
+            f"  • Success: `{len(successful)}`\n"
+            f"  • Failed: `{len(failed)}`\n"
+            f"  • Total Size: `{total_size:.2f} KB`\n"
             f"┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+            f"*Files:*\n{file_list}\n"
             f"🚀 Your torrent client will pick\n"
-            f"it up automatically\\!\n\n"
+            f"them up automatically\\!\n\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"💚 Happy downloading, *{user_name}*\\!"
         )
-
+        
         keyboard = [
             [
                 InlineKeyboardButton("📊 Check Status", callback_data="status"),
                 InlineKeyboardButton("🔙 Menu", callback_data="menu"),
             ]
         ]
-
-        await update.message.reply_text(
-            success_message, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
-    except Exception as e:
-        logger.error(f"Error saving torrent file: {e}")
-
-        # Delete processing message
-        try:
-            await processing_msg.delete()
-        except:
-            pass
-
-        keyboard = [[InlineKeyboardButton("🔄 Try Again", callback_data="menu")]]
-        await update.message.reply_text(
-            "╔═══════════════════════╗\n"
-            "        ❌ *ERROR*        \n"
-            "╚═══════════════════════╝\n\n"
-            "⚠️ Failed to save the torrent\n"
-            "file\\. Please try again\\.\n\n"
-            "🔧 If the problem persists,\n"
-            "contact the administrator\\.",
+        
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=summary_message,
             parse_mode="MarkdownV2",
-            reply_markup=InlineKeyboardMarkup(keyboard),
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
+        
+    except asyncio.CancelledError:
+        # Task was cancelled, do nothing
+        pass
+    except Exception as e:
+        logger.error(f"Error sending batch summary: {e}")
 
 
 async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
