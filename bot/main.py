@@ -404,17 +404,21 @@ async def send_batch_summary(update: Update, context: ContextTypes.DEFAULT_TYPE,
         # Multiple files - create batch summary
         total_size = sum(f.size for f in successful)
         
-        # Build file list
+        # Build file list - same format as single file
         file_list = ""
-        for f in successful:
+        for idx, f in enumerate(successful, 1):
             escaped_name = escape_markdown_v2(f.name)
-            file_list += f"  • `{escaped_name}` \\({f.size:.2f} KB\\)\n"
+            file_list += f"{idx}\\. Name: `{escaped_name}`\n"
+            file_list += f"   Size: `{f.size:.2f} KB`\n"
+            file_list += f"   Status: `QUEUED`\n"
+            if idx < len(successful):
+                file_list += "\n"
         
         if failed:
-            file_list += "\n*Failed:*\n"
-            for f in failed:
+            file_list += "\n\n*Failed Files:*\n"
+            for idx, f in enumerate(failed, 1):
                 escaped_name = escape_markdown_v2(f.name)
-                file_list += f"  • `{escaped_name}` ❌\n"
+                file_list += f"{idx}\\. `{escaped_name}`\n"
         
         summary_message = (
             f"╔═══════════════════════╗\n"
@@ -422,13 +426,9 @@ async def send_batch_summary(update: Update, context: ContextTypes.DEFAULT_TYPE,
             f"╚═══════════════════════╝\n\n"
             f"🎉 Multiple torrents received\\!\n\n"
             f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
-            f"  📁 *Files Processed*\n"
-            f"  • Total: `{len(files)}`\n"
-            f"  • Success: `{len(successful)}`\n"
-            f"  • Failed: `{len(failed)}`\n"
-            f"  • Total Size: `{total_size:.2f} KB`\n"
+            f"  📁 *Files Processed*\n\n"
+            f"{file_list}"
             f"┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-            f"*Files:*\n{file_list}\n"
             f"🚀 Your torrent client will pick\n"
             f"them up automatically\\!\n\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
@@ -598,23 +598,27 @@ async def browse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             )
             return
         
-        # Get last 15 entries
-        entries = feed.entries[:15]
+        # Get ALL entries (no limit)
+        entries = feed.entries
         
-        # Create buttons for each entry
+        # Create buttons for each entry with visual indicators
         keyboard = []
         for idx, entry in enumerate(entries, 1):
             title = entry.get('title', 'Unknown')
-            # Truncate title if too long
-            if len(title) > 50:
-                title = title[:47] + "..."
+            category = entry.get('category', '')
             
-            # Store the link in callback_data with a prefix
-            # We'll use the entry's link for downloading
+            # Add emoji based on category
+            emoji = "📺" if "series" in category.lower() else "🎬" if "pel" in category.lower() else "📦"
+            
+            # Truncate title if too long (leave space for emoji)
+            max_length = 60
+            if len(title) > max_length:
+                title = title[:max_length-3] + "..."
+            
             keyboard.append([
                 InlineKeyboardButton(
-                    f"{idx}. {title}",
-                    callback_data=f"rss_dl_{idx-1}"  # Index in the list
+                    f"{emoji} {title}",
+                    callback_data=f"rss_dl_{idx-1}"
                 )
             ])
         
@@ -625,16 +629,19 @@ async def browse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         context.user_data['rss_entries'] = entries
         
         feed_title = feed.feed.get('title', 'RSS Feed')
-        escaped_title = feed_title.replace('_', '\\_').replace('.', '\\.').replace('-', '\\-')
+        escaped_title = escape_markdown_v2(feed_title)
+        
+        total_text = f"{len(entries)} torrent" if len(entries) == 1 else f"{len(entries)} torrents"
         
         await loading_msg.edit_text(
             "╔═══════════════════════╗\n"
             "      📡 *RSS FEED*      \n"
             "╚═══════════════════════╝\n\n"
-            f"*{escaped_title}*\n\n"
-            f"📊 Showing {len(entries)} latest torrents\n\n"
+            f"🎯 *{escaped_title}*\n\n"
+            f"📊 Total: `{total_text}`\n"
+            f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
             "━━━━━━━━━━━━━━━━━━━━\n\n"
-            "👇 Click a torrent to download:",
+            "👇 Click any torrent to download:",
             parse_mode="MarkdownV2",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -752,20 +759,26 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 )
                 return
             
-            # Get last 15 entries
-            entries = feed.entries[:15]
+            # Get ALL entries (no limit)
+            entries = feed.entries
             
-            # Create buttons for each entry
+            # Create buttons for each entry with visual indicators
             keyboard = []
             for idx, entry in enumerate(entries, 1):
                 title = entry.get('title', 'Unknown')
-                # Truncate title if too long
-                if len(title) > 50:
-                    title = title[:47] + "..."
+                category = entry.get('category', '')
+                
+                # Add emoji based on category
+                emoji = "📺" if "series" in category.lower() else "🎬" if "pel" in category.lower() else "📦"
+                
+                # Truncate title if too long (leave space for emoji)
+                max_length = 60
+                if len(title) > max_length:
+                    title = title[:max_length-3] + "..."
                 
                 keyboard.append([
                     InlineKeyboardButton(
-                        f"{idx}. {title}",
+                        f"{emoji} {title}",
                         callback_data=f"rss_dl_{idx-1}"
                     )
                 ])
@@ -777,16 +790,19 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             context.user_data['rss_entries'] = entries
             
             feed_title = feed.feed.get('title', 'RSS Feed')
-            escaped_title = feed_title.replace('_', '\\_').replace('.', '\\.').replace('-', '\\-')
+            escaped_title = escape_markdown_v2(feed_title)
+            
+            total_text = f"{len(entries)} torrent" if len(entries) == 1 else f"{len(entries)} torrents"
             
             await query.edit_message_text(
                 "╔═══════════════════════╗\n"
                 "      📡 *RSS FEED*      \n"
                 "╚═══════════════════════╝\n\n"
-                f"*{escaped_title}*\n\n"
-                f"📊 Showing {len(entries)} latest torrents\n\n"
+                f"🎯 *{escaped_title}*\n\n"
+                f"📊 Total: `{total_text}`\n"
+                f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
                 "━━━━━━━━━━━━━━━━━━━━\n\n"
-                "👇 Click a torrent to download:",
+                "👇 Click any torrent to download:",
                 parse_mode="MarkdownV2",
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
