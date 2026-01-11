@@ -493,8 +493,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=bool(get_rss_url(chat_id)))
         )
     
-    elif query.data == "rss_browse":
-        # Handle RSS browse button from menu
+    elif query.data == "rss_browse" or query.data.startswith("rss_page_"):
+        # Handle RSS browse button from menu or page navigation
         rss_url = get_rss_url(chat_id)
         
         if not rss_url:
@@ -512,36 +512,53 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             )
             return
         
-        # Show loading
-        await query.edit_message_text(
-            "📡 Loading RSS feed\\.\\.\\.\\.\\n"
-            "Please wait\\.",
-            parse_mode="MarkdownV2"
-        )
-        
-        # Parse RSS feed
-        feed = feedparser.parse(rss_url)
-        
-        if feed.bozo and not feed.entries:
+        # Determine current page
+        if query.data.startswith("rss_page_"):
+            try:
+                page = int(query.data.split("_")[2])
+                context.user_data['rss_current_page'] = page
+            except (ValueError, IndexError):
+                page = 0
+        else:
+            # First time browsing, start at page 0
+            page = 0
+            context.user_data['rss_current_page'] = page
+            
+            # Show loading
             await query.edit_message_text(
-                "❌ Failed to parse RSS feed\\!\n\n"
-                "Please check your RSS URL\\.",
-                parse_mode="MarkdownV2",
-                reply_markup=get_back_keyboard()
+                "📡 Loading RSS feed\\.\\.\\.\\.\\n"
+                "Please wait\\.",
+                parse_mode="MarkdownV2"
             )
-            return
+            
+            # Parse RSS feed
+            feed = feedparser.parse(rss_url)
+            
+            if feed.bozo and not feed.entries:
+                await query.edit_message_text(
+                    "❌ Failed to parse RSS feed\\!\n\n"
+                    "Please check your RSS URL\\.",
+                    parse_mode="MarkdownV2",
+                    reply_markup=get_back_keyboard()
+                )
+                return
+            
+            if not feed.entries:
+                await query.edit_message_text(
+                    "📡 *RSS Feed Empty*\n\n"
+                    "No torrents found in the feed\\.",
+                    parse_mode="MarkdownV2",
+                    reply_markup=get_back_keyboard()
+                )
+                return
+            
+            # Store feed entries in context for callback
+            context.user_data['rss_entries'] = feed.entries
+            context.user_data['rss_feed_title'] = feed.feed.get('title', 'RSS Feed')
         
-        if not feed.entries:
-            await query.edit_message_text(
-                "📡 *RSS Feed Empty*\n\n"
-                "No torrents found in the feed\\.",
-                parse_mode="MarkdownV2",
-                reply_markup=get_back_keyboard()
-            )
-            return
-        
-        # Get ALL entries (no limit)
-        entries = feed.entries
+        # Get entries from context
+        entries = context.user_data.get('rss_entries', [])
+        feed_title = context.user_data.get('rss_feed_title', 'RSS Feed')
         
         # Initialize selection set if not exists
         if 'rss_selected' not in context.user_data:
@@ -549,9 +566,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         
         selected = context.user_data['rss_selected']
         
-        # Create buttons for each entry with visual indicators
+        # Pagination
+        items_per_page = 15
+        total_pages = math.ceil(len(entries) / items_per_page)
+        start_idx = page * items_per_page
+        end_idx = min(start_idx + items_per_page, len(entries))
+        page_entries = entries[start_idx:end_idx]
+        
+        # Create buttons for current page entries
         keyboard = []
-        for idx, entry in enumerate(entries, 1):
+        for i, entry in enumerate(page_entries):
+            global_idx = start_idx + i
             title = entry.get('title', 'Unknown')
             category = entry.get('category', '')
             
@@ -559,9 +584,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             emoji = "📺" if "series" in category.lower() else "🎬" if "pel" in category.lower() else "📦"
             
             # Add checkbox indicator
-            checkbox = "✅" if (idx-1) in selected else "☐"
+            checkbox = "✅" if global_idx in selected else "☐"
             
-            # Truncate title if too long (leave space for emoji and checkbox)
+            # Truncate title if too long
             max_length = 55
             if len(title) > max_length:
                 title = title[:max_length-3] + "..."
@@ -569,28 +594,50 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             keyboard.append([
                 InlineKeyboardButton(
                     f"{checkbox} {emoji} {title}",
-                    callback_data=f"rss_toggle_{idx-1}"
+                    callback_data=f"rss_toggle_{global_idx}"
                 )
             ])
         
-        # Add action buttons
-        action_buttons = []
+        # Add download button if there are selections
         if selected:
-            action_buttons.append(InlineKeyboardButton(
-                f"⬇️ Download ({len(selected)})",
-                callback_data="rss_download_selected"
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"⬇️ Download ({len(selected)})",
+                    callback_data="rss_download_selected"
+                )
+            ])
+        
+        # Add navigation buttons
+        nav_buttons = []
+        if page > 0:
+            nav_buttons.append(InlineKeyboardButton(
+                "◀️ Previous",
+                callback_data=f"rss_page_{page-1}"
             ))
-        action_buttons.append(InlineKeyboardButton("🔙 Back", callback_data="menu"))
-        keyboard.append(action_buttons)
         
-        # Store feed entries in context for callback
-        context.user_data['rss_entries'] = entries
+        # Page indicator
+        nav_buttons.append(InlineKeyboardButton(
+            f"📄 {page+1}/{total_pages}",
+            callback_data="rss_page_info"
+        ))
         
-        feed_title = feed.feed.get('title', 'RSS Feed')
+        if page < total_pages - 1:
+            nav_buttons.append(InlineKeyboardButton(
+                "Next ▶️",
+                callback_data=f"rss_page_{page+1}"
+            ))
+        
+        keyboard.append(nav_buttons)
+        
+        # Add cancel button
+        keyboard.append([
+            InlineKeyboardButton("❌ Cancel", callback_data="rss_cancel")
+        ])
+        
         escaped_title = escape_markdown_v2(feed_title)
-        
         total_text = f"{len(entries)} torrent" if len(entries) == 1 else f"{len(entries)} torrents"
         selected_text = f" \\| Selected: `{len(selected)}`" if selected else ""
+        page_info = f"Page {page+1}/{total_pages} \\({start_idx+1}\\-{end_idx}\\)"
         
         await query.edit_message_text(
             "╔═══════════════════════╗\n"
@@ -598,6 +645,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             "╚═══════════════════════╝\n\n"
             f"🎯 *{escaped_title}*\n\n"
             f"📊 Total: `{total_text}`{selected_text}\n"
+            f"📄 {page_info}\n"
             f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
             "━━━━━━━━━━━━━━━━━━━━\n\n"
             "☐ Click to select \\| ✅ Selected\n"
@@ -740,24 +788,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         items_per_page = 15
         total_pages = math.ceil(len(entries) / items_per_page) if entries else 1
         await query.answer(f"📄 Page {page+1} of {total_pages}", show_alert=False)
-    
-    elif query.data == "rss_cancel":
-        # Handle cancel button - clear RSS context and return to menu
-        context.user_data.pop('rss_selected', None)
-        context.user_data.pop('rss_entries', None)
-        context.user_data.pop('rss_current_page', None)
-        context.user_data.pop('rss_feed_title', None)
-        
-        menu_message = (
-            "╔═══════════════════════╗\n"
-            "       🎯 *MAIN MENU*       \n"
-            "╚═══════════════════════╝\n\n"
-            "Select an option below:\n\n"
-            "━━━━━━━━━━━━━━━━━━━━"
-        )
-        await query.edit_message_text(
-            menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=bool(get_rss_url(chat_id)))
-        )
     
     elif query.data == "rss_download_selected":
         # Handle downloading selected torrents
