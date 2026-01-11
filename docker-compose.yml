@@ -9,9 +9,12 @@ services:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - ALLOWED_CHAT_IDS=${ALLOWED_CHAT_IDS}
       - WATCH_FOLDER=/watch
+      - RSS_STORAGE_FILE=/data/rss_urls.json
     volumes:
       # Mount the watch folder - this should be the same folder your torrent client monitors
       - ${TORRENT_WATCH_PATH:-./watch}:/watch
+      # Persist RSS feed URLs across container restarts
+      - ${RSS_DATA_PATH:-./data}:/data
     networks:
       - torrent-network
     healthcheck:

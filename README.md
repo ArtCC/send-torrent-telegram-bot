@@ -16,11 +16,13 @@ Perfect for managing your torrents remotely through Telegram!
 
 - 🔒 **Secure**: Only authorized chat IDs can send torrents
 - 👨‍👩‍👧‍👦 **Multi-user**: Support for multiple family members (comma-separated chat IDs)
+- � **RSS Integration**: Browse and download torrents from your private tracker feeds
 - 🐳 **Dockerized**: Easy deployment with Docker Compose
 - 🔄 **Auto-update**: Automatic Docker image builds on GitHub push
 - 📦 **Lightweight**: Minimal Python dependencies
 - 🚀 **Fast**: Instant torrent file transfer to your download manager
 - 🔍 **Logging**: Complete activity logging for monitoring
+- 🎨 **Visual UI**: Beautiful interface with inline menus and buttons
 
 ## 📋 Prerequisites
 
@@ -80,17 +82,47 @@ You should see: `Bot is running...`
 
 ## 💬 Using the Bot
 
+### Basic Usage
+
 1. Open Telegram and find your bot
 2. Send `/start` to verify your chat ID and authorization
 3. Send any `.torrent` file to the bot
 4. The bot will save it to your watch folder
 5. Your torrent client will automatically pick it up!
 
+### RSS Feed Integration
+
+The bot can browse your private tracker RSS feeds and download torrents directly:
+
+1. **Set your RSS feed URL**:
+   ```
+   /setrss https://your-tracker.com/rss/your-rss-key
+   ```
+   
+2. **Browse your feed**:
+   - Use `/browse` command, or
+   - Click "📡 Browse RSS Feed" button from the main menu
+   
+3. **Download torrents**:
+   - Click on any torrent title from the list
+   - The bot will automatically download and save it to your watch folder
+
+4. **Remove RSS feed** (optional):
+   ```
+   /clearrss
+   ```
+
+> **Note**: Your RSS URL is stored securely per user and includes your personal RSS key from your tracker.
+
 ### Available Commands
 
-- `/start` - Show welcome message and your chat ID
-- `/help` - Show help information
+- `/start` - Show welcome message and main menu
+- `/help` - Show help information and all commands
 - `/status` - Check bot status and authorization
+- `/menu` - Show interactive menu with buttons
+- `/setrss <URL>` - Set your RSS feed URL
+- `/browse` - Browse and download from your RSS feed
+- `/clearrss` - Remove your saved RSS feed URL
 
 ## 🔧 Integration with Torrent Clients
 
