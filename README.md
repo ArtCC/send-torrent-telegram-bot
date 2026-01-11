@@ -64,6 +64,12 @@ ALLOWED_CHAT_IDS=123456789,987654321
 
 # Path to your torrent client's watch folder
 TORRENT_WATCH_PATH=/path/to/qbittorrent/watch
+
+# Path on your host system for RSS data persistence
+RSS_DATA_PATH=./data
+
+# Path to RSS storage file inside the container
+RSS_STORAGE_FILE=/data/rss_urls.json
 ```
 
 ### 4. Deploy with Docker Compose
@@ -132,6 +138,34 @@ The bot can browse your private tracker RSS feeds and download torrents directly
 2. Set the path to match your `TORRENT_WATCH_PATH`
 3. (Optional) Enable "Delete .torrent files afterwards"
 
+Example docker-compose for qBittorrent:
+
+```yaml
+version: '3.8'
+
+services:
+  qbittorrent:
+    image: linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    volumes:
+      - ./config:/config
+      - ./downloads:/downloads
+      - ./watch:/watch  # Same path as bot
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  send-torrent-telegram-bot:
+    image: ghcr.io/artcc/send-torrent-telegram-bot:latest
+    container_name: send-torrent-telegram-bot
+    env_file:
+      - .env
+    volumes:
+      - ./watch:/watch  # Shared folder for torrents
+      - ./data:/data    # RSS data persistence
+    restart: unless-stopped
+```
+
 ## 📦 Installing via Portainer
 
 1. Go to your Portainer instance
@@ -172,7 +206,7 @@ Or in Portainer: Click on your stack → **Pull and redeploy**
 ┌─────────────────┐
 │  Telegram User  │
 └────────┬────────┘
-         │ .torrent file
+         │ .torrent file OR RSS browse
          ▼
 ┌─────────────────────┐
 │  Telegram Bot API   │
@@ -182,12 +216,15 @@ Or in Portainer: Click on your stack → **Pull and redeploy**
 ┌─────────────────────┐
 │  Python Bot         │
 │  (Docker Container) │
+│  - RSS Parser       │
+│  - File Handler     │
 └────────┬────────────┘
          │
          ▼
 ┌─────────────────────┐
-│  Shared Volume      │
-│  /watch folder      │
+│  Shared Volumes     │
+│  - /watch (torrents)│
+│  - /data (RSS URLs) │
 └────────┬────────────┘
          │
          ▼
@@ -225,6 +262,13 @@ Or in Portainer: Click on your stack → **Pull and redeploy**
 sudo chown -R 1000:1000 /path/to/watch
 sudo chmod -R 775 /path/to/watch
 ```
+
+### RSS feed issues
+
+- **Empty feed**: Verify your RSS URL includes your personal key
+- **Invalid feed**: Check if the tracker is accessible from your server
+- **Torrents not downloading**: Ensure the RSS feed provides direct .torrent links
+- **RSS data lost after restart**: Verify `RSS_DATA_PATH` volume is mounted correctly
 
 ## 🤝 Contributing
 
