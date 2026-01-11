@@ -10,6 +10,7 @@ import tempfile
 import feedparser
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
+from telegram.error import BadRequest
 
 from bot.config import logger, WATCH_FOLDER
 from bot.utils import escape_markdown_v2, is_authorized, get_main_menu_keyboard, get_back_keyboard
@@ -117,7 +118,7 @@ async def browse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     # Send loading message
     loading_msg = await update.message.reply_text(
-        "📡 Loading RSS feed\\.\\.\\.\\.\\n"
+        "📡 Loading RSS feed\\.\\.\\.\\.\\.\n"
         "Please wait\\.",
         parse_mode="MarkdownV2"
     )
@@ -289,7 +290,7 @@ async def handle_rss_browse(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         
         # Show loading
         await query.edit_message_text(
-            "📡 Loading RSS feed\\.\\.\\.\\.\\n"
+            "📡 Loading RSS feed\\.\\.\\.\\.\\.\n"
             "Please wait\\.",
             parse_mode="MarkdownV2"
         )
@@ -402,20 +403,27 @@ async def handle_rss_browse(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     selected_text = f" \\| Selected: `{len(selected)}`" if selected else ""
     page_info = f"Page {page+1}/{total_pages} \\({start_idx+1}\\-{end_idx}\\)"
     
-    await query.edit_message_text(
-        "╔═══════════════════════╗\n"
-        "      📡 *RSS FEED*      \n"
-        "╚═══════════════════════╝\n\n"
-        f"🎯 *{escaped_title}*\n\n"
-        f"📊 Total: `{total_text}`{selected_text}\n"
-        f"📄 {page_info}\n"
-        f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
-        "━━━━━━━━━━━━━━━━━━━━\n\n"
-        "☐ Click to select \\| ✅ Selected\n"
-        "👇 Choose torrents to download:",
-        parse_mode="MarkdownV2",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+    try:
+        await query.edit_message_text(
+            "╔═══════════════════════╗\n"
+            "      📡 *RSS FEED*      \n"
+            "╚═══════════════════════╝\n\n"
+            f"🎯 *{escaped_title}*\n\n"
+            f"📊 Total: `{total_text}`{selected_text}\n"
+            f"📄 {page_info}\n"
+            f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "☐ Click to select \\| ✅ Selected\n"
+            "👇 Choose torrents to download:",
+            parse_mode="MarkdownV2",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    except BadRequest as e:
+        if "message is not modified" in str(e).lower():
+            # Message content is identical, just answer the query
+            await query.answer()
+        else:
+            raise
 
 
 async def handle_rss_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -511,20 +519,27 @@ async def handle_rss_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         selected_text = f" \\| Selected: `{len(selected)}`" if selected else ""
         page_info = f"Page {page+1}/{total_pages} \\({start_idx+1}\\-{end_idx}\\)"
         
-        await query.edit_message_text(
-            "╔═══════════════════════╗\n"
-            "      📡 *RSS FEED*      \n"
-            "╚═══════════════════════╝\n\n"
-            f"🎯 *{escaped_title}*\n\n"
-            f"📊 Total: `{total_text}`{selected_text}\n"
-            f"📄 {page_info}\n"
-            f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
-            "☐ Click to select \\| ✅ Selected\n"
-            "👇 Choose torrents to download:",
-            parse_mode="MarkdownV2",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+        try:
+            await query.edit_message_text(
+                "╔═══════════════════════╗\n"
+                "      📡 *RSS FEED*      \n"
+                "╚═══════════════════════╝\n\n"
+                f"🎯 *{escaped_title}*\n\n"
+                f"📊 Total: `{total_text}`{selected_text}\n"
+                f"📄 {page_info}\n"
+                f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
+                "━━━━━━━━━━━━━━━━━━━━\n\n"
+                "☐ Click to select \\| ✅ Selected\n"
+                "👇 Choose torrents to download:",
+                parse_mode="MarkdownV2",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        except BadRequest as e:
+            if "message is not modified" in str(e).lower():
+                # Message content is identical, ignore
+                pass
+            else:
+                raise
         
     except Exception as e:
         logger.error(f"Error toggling RSS selection: {e}")
