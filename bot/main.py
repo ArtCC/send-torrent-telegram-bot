@@ -601,6 +601,12 @@ async def browse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         # Get ALL entries (no limit)
         entries = feed.entries
         
+        # Initialize selection set if not exists
+        if 'rss_selected' not in context.user_data:
+            context.user_data['rss_selected'] = set()
+        
+        selected = context.user_data['rss_selected']
+        
         # Create buttons for each entry with visual indicators
         keyboard = []
         for idx, entry in enumerate(entries, 1):
@@ -610,20 +616,30 @@ async def browse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             # Add emoji based on category
             emoji = "📺" if "series" in category.lower() else "🎬" if "pel" in category.lower() else "📦"
             
-            # Truncate title if too long (leave space for emoji)
-            max_length = 150
+            # Add checkbox indicator
+            checkbox = "✅" if (idx-1) in selected else "☐"
+            
+            # Truncate title if too long (leave space for emoji and checkbox)
+            max_length = 55
             if len(title) > max_length:
                 title = title[:max_length-3] + "..."
             
             keyboard.append([
                 InlineKeyboardButton(
-                    f"{emoji} {title}",
-                    callback_data=f"rss_dl_{idx-1}"
+                    f"{checkbox} {emoji} {title}",
+                    callback_data=f"rss_toggle_{idx-1}"
                 )
             ])
         
-        # Add back button
-        keyboard.append([InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")])
+        # Add action buttons
+        action_buttons = []
+        if selected:
+            action_buttons.append(InlineKeyboardButton(
+                f"⬇️ Download ({len(selected)})",
+                callback_data="rss_download_selected"
+            ))
+        action_buttons.append(InlineKeyboardButton("🔙 Back", callback_data="menu"))
+        keyboard.append(action_buttons)
         
         # Store feed entries in context for callback
         context.user_data['rss_entries'] = entries
@@ -802,36 +818,29 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             ))
         action_buttons.append(InlineKeyboardButton("🔙 Back", callback_data="menu"))
         keyboard.append(action_buttons)
-            
-            feed_title = feed.feed.get('title', 'RSS Feed')
-            escaped_title = escape_markdown_v2(feed_title)
-            
-            total_text = f"{len(entries)} torrent" if len(entries) == 1 else f"{len(entries)} torrents"
-            selected_text = f" \\| Selected: `{len(selected)}`" if selected else ""
-            
-            await query.edit_message_text(
-                "╔═══════════════════════╗\n"
-                "      📡 *RSS FEED*      \n"
-                "╚═══════════════════════╝\n\n"
-                f"🎯 *{escaped_title}*\n\n"
-                f"📊 Total: `{total_text}`{selected_text}\n"
-                f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
-                "━━━━━━━━━━━━━━━━━━━━\n\n"
-                "☐ Click to select \\| ✅ Selected\n"
-                "👇 Choose torrents to download:",
-                parse_mode="MarkdownV2",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-            
-        except Exception as e:
-            logger.error(f"Error fetching RSS feed: {e}")
-            await query.edit_message_text(
-                "❌ Error loading RSS feed\\!\n\n"
-                "Please check your connection\n"
-                "or RSS URL\\.",
-                parse_mode="MarkdownV2",
-                reply_markup=get_back_keyboard()
-            )
+        
+        # Store feed entries in context for callback
+        context.user_data['rss_entries'] = entries
+        
+        feed_title = feed.feed.get('title', 'RSS Feed')
+        escaped_title = escape_markdown_v2(feed_title)
+        
+        total_text = f"{len(entries)} torrent" if len(entries) == 1 else f"{len(entries)} torrents"
+        selected_text = f" \\| Selected: `{len(selected)}`" if selected else ""
+        
+        await query.edit_message_text(
+            "╔═══════════════════════╗\n"
+            "      📡 *RSS FEED*      \n"
+            "╚═══════════════════════╝\n\n"
+            f"🎯 *{escaped_title}*\n\n"
+            f"📊 Total: `{total_text}`{selected_text}\n"
+            f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "☐ Click to select \\| ✅ Selected\n"
+            "👇 Choose torrents to download:",
+            parse_mode="MarkdownV2",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
     
     elif query.data.startswith("rss_toggle_"):
         # Handle RSS torrent selection toggle
