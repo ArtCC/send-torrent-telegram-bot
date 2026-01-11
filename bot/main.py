@@ -611,7 +611,7 @@ async def browse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             emoji = "📺" if "series" in category.lower() else "🎬" if "pel" in category.lower() else "📦"
             
             # Truncate title if too long (leave space for emoji)
-            max_length = 60
+            max_length = 150
             if len(title) > max_length:
                 title = title[:max_length-3] + "..."
             
