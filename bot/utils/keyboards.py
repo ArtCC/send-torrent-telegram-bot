@@ -18,6 +18,9 @@ def get_main_menu_keyboard(chat_id: Optional[int] = None, has_rss: bool = False)
             InlineKeyboardButton("📋 How to Use", callback_data="howto"),
             InlineKeyboardButton("🔑 My Chat ID", callback_data="chatid"),
         ],
+        [
+            InlineKeyboardButton("👨‍💻 Author", callback_data="author"),
+        ],
     ]
     
     # Add RSS button if user has RSS configured

@@ -879,6 +879,25 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             chat_id_message, parse_mode="MarkdownV2", reply_markup=get_back_keyboard()
         )
 
+    elif query.data == "author":
+        author_message = (
+            "╔═══════════════════════╗\n"
+            "      👨‍💻 *AUTHOR*      \n"
+            "╚═══════════════════════╝\n\n"
+            "*Arturo Carretero Calvo*\n\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "💻 *GitHub:*\n"
+            "[github\\.com/ArtCC](https://github.com/ArtCC)\n\n"
+            "🚀 Check out my other projects\\!\n\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "✨ *Built with:*\n"
+            "GitHub Copilot \(Claude Sonnet 4\\.5\)\n\n"
+            "📄 *License:* Apache 2\\.0"
+        )
+        await query.edit_message_text(
+            author_message, parse_mode="MarkdownV2", reply_markup=get_back_keyboard()
+        )
+
 
 async def handle_other_messages(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle other types of messages."""
