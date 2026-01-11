@@ -109,15 +109,26 @@ The bot can browse your private tracker RSS feeds and download torrents directly
    - Use `/browse` command, or
    - Click "📡 Browse RSS Feed" button from the main menu
    
-3. **Download torrents**:
-   - Click on any torrent title from the list
-   - The bot will automatically download and save it to your watch folder
+3. **Select torrents**:
+   - Click on torrent titles to select (☐) or deselect (✅)
+   - Select multiple torrents at once
+   - See the counter showing how many are selected
+   
+4. **Download selected torrents**:
+   - Click "⬇️ Download (N)" button to download all selected torrents
+   - The bot will download them all and show a complete summary
 
-4. **Remove RSS feed** (optional):
+5. **Remove RSS feed** (optional):
    ```
    /clearrss
    ```
 
+> **Features**:
+> - ✅ Multi-selection with visual checkboxes
+> - 📺 Category-based emojis (Series, Movies, Others)
+> - 📊 Real-time selection counter
+> - 📝 Complete summary after downloading
+> 
 > **Note**: Your RSS URL is stored securely per user and includes your personal RSS key from your tracker.
 
 ### Available Commands
