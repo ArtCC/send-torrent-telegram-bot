@@ -739,31 +739,30 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             parse_mode="MarkdownV2"
         )
         
-        try:
-            # Parse RSS feed
-            feed = feedparser.parse(rss_url)
-            
-            if feed.bozo and not feed.entries:
-                await query.edit_message_text(
-                    "❌ Failed to parse RSS feed\\!\n\n"
-                    "Please check your RSS URL\\.",
-                    parse_mode="MarkdownV2",
-                    reply_markup=get_back_keyboard()
-                )
-                return
-            
-            if not feed.entries:
-                await query.edit_message_text(
-                    "📡 *RSS Feed Empty*\n\n"
-                    "No torrents found in the feed\\.",
-                    parse_mode="MarkdownV2",
-                    reply_markup=get_back_keyboard()
-                )
-                return
-            
-            # Get ALL entries (no limit)
-            entries = feed.entries
-            
+        # Parse RSS feed
+        feed = feedparser.parse(rss_url)
+        
+        if feed.bozo and not feed.entries:
+            await query.edit_message_text(
+                "❌ Failed to parse RSS feed\\!\n\n"
+                "Please check your RSS URL\\.",
+                parse_mode="MarkdownV2",
+                reply_markup=get_back_keyboard()
+            )
+            return
+        
+        if not feed.entries:
+            await query.edit_message_text(
+                "📡 *RSS Feed Empty*\n\n"
+                "No torrents found in the feed\\.",
+                parse_mode="MarkdownV2",
+                reply_markup=get_back_keyboard()
+            )
+            return
+        
+        # Get ALL entries (no limit)
+        entries = feed.entries
+        
         # Initialize selection set if not exists
         if 'rss_selected' not in context.user_data:
             context.user_data['rss_selected'] = set()
