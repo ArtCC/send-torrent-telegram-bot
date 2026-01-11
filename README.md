@@ -132,33 +132,6 @@ The bot can browse your private tracker RSS feeds and download torrents directly
 2. Set the path to match your `TORRENT_WATCH_PATH`
 3. (Optional) Enable "Delete .torrent files afterwards"
 
-Example docker-compose for qBittorrent:
-
-```yaml
-version: '3.8'
-
-services:
-  qbittorrent:
-    image: linuxserver/qbittorrent:latest
-    container_name: qbittorrent
-    volumes:
-      - ./config:/config
-      - ./downloads:/downloads
-      - ./watch:/watch  # Same path as bot
-    ports:
-      - "8080:8080"
-    restart: unless-stopped
-
-  send-torrent-telegram-bot:
-    image: ghcr.io/artcc/send-torrent-telegram-bot:latest
-    container_name: send-torrent-telegram-bot
-    env_file:
-      - .env
-    volumes:
-      - ./watch:/watch  # Shared folder
-    restart: unless-stopped
-```
-
 ## 📦 Installing via Portainer
 
 1. Go to your Portainer instance
