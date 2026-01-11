@@ -7,6 +7,7 @@ Receives .torrent files and saves them to a shared folder for torrent clients.
 import os
 import asyncio
 import json
+import math
 import feedparser
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -622,17 +623,27 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 selected.add(idx)
                 await query.answer("✅ Selected")
             
-            # Refresh the list to show updated checkboxes
+            # Get current page and entries
+            page = context.user_data.get('rss_current_page', 0)
             entries = context.user_data.get('rss_entries', [])
+            feed_title = context.user_data.get('rss_feed_title', 'RSS Feed')
+            
+            # Pagination
+            items_per_page = 15
+            total_pages = math.ceil(len(entries) / items_per_page)
+            start_idx = page * items_per_page
+            end_idx = min(start_idx + items_per_page, len(entries))
+            page_entries = entries[start_idx:end_idx]
             
             # Rebuild keyboard with updated selections
             keyboard = []
-            for i, entry in enumerate(entries, 1):
+            for i, entry in enumerate(page_entries):
+                global_idx = start_idx + i
                 title = entry.get('title', 'Unknown')
                 category = entry.get('category', '')
                 
                 emoji = "📺" if "series" in category.lower() else "🎬" if "pel" in category.lower() else "📦"
-                checkbox = "✅" if (i-1) in selected else "☐"
+                checkbox = "✅" if global_idx in selected else "☐"
                 
                 max_length = 55
                 if len(title) > max_length:
@@ -641,27 +652,49 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 keyboard.append([
                     InlineKeyboardButton(
                         f"{checkbox} {emoji} {title}",
-                        callback_data=f"rss_toggle_{i-1}"
+                        callback_data=f"rss_toggle_{global_idx}"
                     )
                 ])
             
-            # Add action buttons
-            action_buttons = []
+            # Add download button if there are selections
             if selected:
-                action_buttons.append(InlineKeyboardButton(
-                    f"⬇️ Download ({len(selected)})",
-                    callback_data="rss_download_selected"
+                keyboard.append([
+                    InlineKeyboardButton(
+                        f"⬇️ Download ({len(selected)})",
+                        callback_data="rss_download_selected"
+                    )
+                ])
+            
+            # Add navigation buttons
+            nav_buttons = []
+            if page > 0:
+                nav_buttons.append(InlineKeyboardButton(
+                    "◀️ Previous",
+                    callback_data=f"rss_page_{page-1}"
                 ))
-            action_buttons.append(InlineKeyboardButton("🔙 Back", callback_data="menu"))
-            keyboard.append(action_buttons)
             
-            # Update message
-            feed = feedparser.parse(get_rss_url(chat_id))
-            feed_title = feed.feed.get('title', 'RSS Feed')
+            nav_buttons.append(InlineKeyboardButton(
+                f"📄 {page+1}/{total_pages}",
+                callback_data="rss_page_info"
+            ))
+            
+            if page < total_pages - 1:
+                nav_buttons.append(InlineKeyboardButton(
+                    "Next ▶️",
+                    callback_data=f"rss_page_{page+1}"
+                ))
+            
+            keyboard.append(nav_buttons)
+            
+            # Add cancel button
+            keyboard.append([
+                InlineKeyboardButton("❌ Cancel", callback_data="rss_cancel")
+            ])
+            
             escaped_title = escape_markdown_v2(feed_title)
-            
             total_text = f"{len(entries)} torrent" if len(entries) == 1 else f"{len(entries)} torrents"
             selected_text = f" \\| Selected: `{len(selected)}`" if selected else ""
+            page_info = f"Page {page+1}/{total_pages} \\({start_idx+1}\\-{end_idx}\\)"
             
             await query.edit_message_text(
                 "╔═══════════════════════╗\n"
@@ -669,6 +702,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 "╚═══════════════════════╝\n\n"
                 f"🎯 *{escaped_title}*\n\n"
                 f"📊 Total: `{total_text}`{selected_text}\n"
+                f"📄 {page_info}\n"
                 f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
                 "━━━━━━━━━━━━━━━━━━━━\n\n"
                 "☐ Click to select \\| ✅ Selected\n"
@@ -680,6 +714,50 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         except Exception as e:
             logger.error(f"Error toggling RSS selection: {e}")
             await query.answer("❌ Error updating selection", show_alert=True)
+    
+    elif query.data == "rss_cancel":
+        # Handle cancel button - clear RSS context and return to menu
+        context.user_data.pop('rss_selected', None)
+        context.user_data.pop('rss_entries', None)
+        context.user_data.pop('rss_current_page', None)
+        context.user_data.pop('rss_feed_title', None)
+        
+        menu_message = (
+            "╔═══════════════════════╗\n"
+            "       🎯 *MAIN MENU*       \n"
+            "╚═══════════════════════╝\n\n"
+            "Select an option below:\n\n"
+            "━━━━━━━━━━━━━━━━━━━━"
+        )
+        await query.edit_message_text(
+            menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=bool(get_rss_url(chat_id)))
+        )
+    
+    elif query.data == "rss_page_info":
+        # Just acknowledge the click on page indicator
+        page = context.user_data.get('rss_current_page', 0)
+        entries = context.user_data.get('rss_entries', [])
+        items_per_page = 15
+        total_pages = math.ceil(len(entries) / items_per_page) if entries else 1
+        await query.answer(f"📄 Page {page+1} of {total_pages}", show_alert=False)
+    
+    elif query.data == "rss_cancel":
+        # Handle cancel button - clear RSS context and return to menu
+        context.user_data.pop('rss_selected', None)
+        context.user_data.pop('rss_entries', None)
+        context.user_data.pop('rss_current_page', None)
+        context.user_data.pop('rss_feed_title', None)
+        
+        menu_message = (
+            "╔═══════════════════════╗\n"
+            "       🎯 *MAIN MENU*       \n"
+            "╚═══════════════════════╝\n\n"
+            "Select an option below:\n\n"
+            "━━━━━━━━━━━━━━━━━━━━"
+        )
+        await query.edit_message_text(
+            menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=bool(get_rss_url(chat_id)))
+        )
     
     elif query.data == "rss_download_selected":
         # Handle downloading selected torrents
