@@ -16,7 +16,7 @@ Perfect for managing your torrents remotely through Telegram!
 
 - 🔒 **Secure**: Only authorized chat IDs can send torrents
 - 👨‍👩‍👧‍👦 **Multi-user**: Support for multiple family members (comma-separated chat IDs)
-- � **RSS Integration**: Browse and download torrents from your private tracker feeds
+- 📡 **Multi-RSS**: Up to 10 RSS feeds per user with custom names
 - 🐳 **Dockerized**: Easy deployment with Docker Compose
 - 🔄 **Auto-update**: Automatic Docker image builds on GitHub push
 - 📦 **Lightweight**: Minimal Python dependencies
@@ -98,16 +98,20 @@ You should see: `Bot is running...`
 
 ### RSS Feed Integration
 
-The bot can browse your private tracker RSS feeds and download torrents directly:
+The bot can browse your private tracker RSS feeds and download torrents directly. **You can add up to 10 RSS feeds per user!**
 
-1. **Set your RSS feed URL**:
+1. **Add your RSS feeds**:
    ```
-   /setrss https://your-tracker.com/rss/your-rss-key
+   /setrss https://your-tracker.com/rss/key1 MyTracker
+   /setrss https://another-tracker.com/rss/key2 AnotherOne
    ```
+   > ⚠️ **Name cannot contain spaces**. If you add a feed with an existing name, it will be overwritten.
    
-2. **Browse your feed**:
+2. **Browse your feeds**:
    - Use `/browse` command, or
    - Click "📡 Browse RSS Feed" button from the main menu
+   - If you have multiple feeds, you'll see buttons to select which one to browse
+   - If you have only one feed, it opens directly
    
 3. **Select torrents**:
    - Click on torrent titles to select (☐) or deselect (✅)
@@ -118,18 +122,22 @@ The bot can browse your private tracker RSS feeds and download torrents directly
    - Click "⬇️ Download (N)" button to download all selected torrents
    - The bot will download them all and show a complete summary
 
-5. **Remove RSS feed** (optional):
+5. **Manage your feeds**:
    ```
    /clearrss
    ```
+   - Shows all your feeds with delete buttons
+   - Confirmation required before deleting
 
 > **Features**:
+> - 📡 Up to **10 RSS feeds** per user
 > - ✅ Multi-selection with visual checkboxes
 > - 📺 Category-based emojis (Series, Movies, Others)
 > - 📊 Real-time selection counter
 > - 📝 Complete summary after downloading
+> - 🔄 Overwrite feeds by using same name
 > 
-> **Note**: Your RSS URL is stored securely per user and includes your personal RSS key from your tracker.
+> **Note**: Your RSS URLs are stored securely per user and include your personal RSS key from your tracker.
 
 ### Available Commands
 
@@ -137,9 +145,11 @@ The bot can browse your private tracker RSS feeds and download torrents directly
 - `/help` - Show help information and all commands
 - `/status` - Check bot status and authorization
 - `/menu` - Show interactive menu with buttons
-- `/setrss <URL>` - Set your RSS feed URL
-- `/browse` - Browse and download from your RSS feed
-- `/clearrss` - Remove your saved RSS feed URL
+- `/chatid` - Show your Chat ID
+- `/author` - About the author
+- `/setrss <URL> <name>` - Add RSS feed with custom name (max 10)
+- `/browse` - Browse and download from your RSS feeds
+- `/clearrss` - Manage and delete your RSS feeds
 
 ## 🔧 Integration with Torrent Clients
 
@@ -280,6 +290,8 @@ sudo chmod -R 775 /path/to/watch
 - **Invalid feed**: Check if the tracker is accessible from your server
 - **Torrents not downloading**: Ensure the RSS feed provides direct .torrent links
 - **RSS data lost after restart**: Verify `RSS_DATA_PATH` volume is mounted correctly
+- **Cannot add more feeds**: Limit is 10 feeds per user. Use `/clearrss` to remove unused ones
+- **Feed not updating**: The name cannot contain spaces, use `/setrss <URL> <name>` format
 
 ## 🤝 Contributing
 

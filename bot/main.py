@@ -33,7 +33,7 @@ from bot.config import (
 )
 from bot.models import TorrentFile, batch_queues, batch_tasks
 from bot.utils import escape_markdown_v2, is_authorized, get_main_menu_keyboard, get_back_keyboard
-from bot.services import get_rss_url
+from bot.services import has_rss
 from bot.handlers import (
     start_command,
     help_command,
@@ -45,6 +45,11 @@ from bot.handlers import (
     browse_command,
     clearrss_command,
     handle_rss_browse,
+    handle_rss_select,
+    handle_rss_delete,
+    handle_rss_confirm_delete,
+    handle_rss_cancel_delete,
+    handle_rss_page,
     handle_rss_toggle,
     handle_rss_cancel,
     handle_rss_page_info,
@@ -269,11 +274,26 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             "Select an option below:"
         )
         await query.edit_message_text(
-            menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=bool(get_rss_url(chat_id)))
+            menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=has_rss(chat_id))
         )
     
-    elif query.data == "rss_browse" or query.data.startswith("rss_page_"):
+    elif query.data == "rss_browse":
         await handle_rss_browse(update, context)
+    
+    elif query.data.startswith("rss_select_"):
+        await handle_rss_select(update, context)
+    
+    elif query.data.startswith("rss_page_"):
+        await handle_rss_page(update, context)
+    
+    elif query.data.startswith("rss_delete_"):
+        await handle_rss_delete(update, context)
+    
+    elif query.data.startswith("rss_confirm_delete_"):
+        await handle_rss_confirm_delete(update, context)
+    
+    elif query.data == "rss_cancel_delete":
+        await handle_rss_cancel_delete(update, context)
     
     elif query.data.startswith("rss_toggle_"):
         await handle_rss_toggle(update, context)
@@ -297,16 +317,16 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             "❓ `/help` \\- Show this help guide\n"
             "📊 `/status` \\- Check bot status\n"
             "🔍 `/menu` \\- Show interactive menu\n"
-            "📡 `/setrss <URL>` \\- Set RSS feed\n"
-            "🔎 `/browse` \\- Browse RSS feed\n"
-            "🗑️ `/clearrss` \\- Remove RSS feed\n\n"
+            "📡 `/setrss <URL> <name>` \\- Add RSS\n"
+            "🔎 `/browse` \\- Browse your RSS feeds\n"
+            "🗑️ `/clearrss` \\- Manage RSS feeds\n\n"
             "━━━━━━━━━━━━━━━━━━━━\n\n"
             "*Quick Actions:*\n\n"
             "• Send any `.torrent` file\n"
             "• Use the menu buttons\n"
             "• Check your authorization\n"
-            "• Browse your RSS feed\n\n"
-            "💡 *Tip:* Keep your chat ID safe\\!"
+            "• Browse your RSS feeds\n\n"
+            "💡 *Tip:* Up to 10 RSS feeds\\!"
         )
         await query.edit_message_text(
             help_message, parse_mode="MarkdownV2", reply_markup=get_back_keyboard()
@@ -440,9 +460,9 @@ async def setup_bot_commands(application: Application) -> None:
         BotCommand("status", "📊 Check bot status and info"),
         BotCommand("chatid", "🔑 Show your Chat ID"),
         BotCommand("author", "👨‍💻 About the author"),
-        BotCommand("setrss", "📡 Set your RSS feed URL"),
-        BotCommand("browse", "🔎 Browse your RSS feed"),
-        BotCommand("clearrss", "🗑️ Remove your RSS feed"),
+        BotCommand("setrss", "📡 Add RSS feed: /setrss <URL> <name>"),
+        BotCommand("browse", "🔎 Browse your RSS feeds"),
+        BotCommand("clearrss", "🗑️ Manage and delete RSS feeds"),
     ]
     await application.bot.set_my_commands(commands)
 

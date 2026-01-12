@@ -14,7 +14,7 @@ from telegram.error import BadRequest
 
 from bot.config import logger, WATCH_FOLDER
 from bot.utils import escape_markdown_v2, is_authorized, get_main_menu_keyboard, get_back_keyboard
-from bot.services import save_rss_url, delete_rss_url, get_rss_url
+from bot.services import save_rss_url, delete_rss_url, get_rss_url, get_all_rss, has_rss, MAX_RSS_FEEDS
 
 
 # ==================== RSS Commands ====================
@@ -30,25 +30,26 @@ async def setrss_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         return
     
-    # Check if URL was provided
-    if not context.args or len(context.args) == 0:
+    # Check if URL and name were provided
+    if not context.args or len(context.args) < 2:
         await update.message.reply_text(
             "━━━━━━━━━━━━━━━━━━━━━━\n"
             "📡 *SET RSS FEED*\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "⚠️ Please provide an RSS URL\\!\n\n"
+            "⚠️ Please provide URL and name\\!\n\n"
             "*Usage:*\n"
-            "`/setrss <RSS\\_URL>`\n\n"
+            "`/setrss <URL> <name>`\n\n"
             "*Example:*\n"
-            "`/setrss https://example\\.com/rss/feed`\n\n"
-            "💡 Your personal RSS URL from\n"
-            "your tracker\\.",
+            "`/setrss https://example\\.com/rss MyTracker`\n\n"
+            "💡 Name cannot contain spaces\\.\n"
+            f"📊 Maximum {MAX_RSS_FEEDS} RSS feeds allowed\\.",
             parse_mode="MarkdownV2",
             reply_markup=get_back_keyboard()
         )
         return
     
-    rss_url = " ".join(context.args)
+    rss_url = context.args[0]
+    rss_name = context.args[1]
     
     # Basic URL validation
     if not rss_url.startswith(('http://', 'https://')):
@@ -59,37 +60,38 @@ async def setrss_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         return
     
-    try:
-        save_rss_url(chat_id, rss_url)
-        
-        # Escape URL for MarkdownV2
-        escaped_url = rss_url.replace('.', '\\.').replace('-', '\\-').replace('_', '\\_')
+    # Save RSS
+    success, message = save_rss_url(chat_id, rss_name, rss_url)
+    
+    if success:
+        escaped_name = escape_markdown_v2(rss_name)
+        escaped_url_display = rss_url[:50] + "..." if len(rss_url) > 50 else rss_url
+        escaped_url_display = escape_markdown_v2(escaped_url_display)
         
         await update.message.reply_text(
             "━━━━━━━━━━━━━━━━━━━━━━\n"
             "✅ *RSS SAVED\\!*\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "🎉 Your RSS feed URL has been\n"
-            "saved successfully\\!\n\n"
-            "📡 *Feed URL:*\n"
-            f"`{escaped_url}`\n\n"
+            f"🎉 RSS feed saved successfully\\!\n\n"
+            f"📛 *Name:* `{escaped_name}`\n"
+            f"🔗 *URL:* `{escaped_url_display}`\n\n"
             "━━━━━━━━━━━━━━━━━━━━\n\n"
-            "💡 Use `/browse` to view your feed\\!\n\n"
-            "🔧 Use `/clearrss` to remove it\\.",
+            "💡 Use `/browse` to view your feeds\\!\n"
+            "🗑️ Use `/clearrss` to manage them\\.",
             parse_mode="MarkdownV2",
             reply_markup=get_back_keyboard()
         )
-    except Exception as e:
-        logger.error(f"Error saving RSS URL: {e}")
+    else:
+        escaped_message = escape_markdown_v2(message)
         await update.message.reply_text(
-            "❌ Error saving RSS URL\\."
-            "Please try again\\.",
+            f"❌ {escaped_message}\n\n"
+            f"📊 Limit: {MAX_RSS_FEEDS} feeds per user\\.",
             parse_mode="MarkdownV2"
         )
 
 
 async def browse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /browse command to view RSS feed."""
+    """Handle /browse command to view RSS feeds."""
     chat_id = update.effective_chat.id
     
     if not is_authorized(chat_id):
@@ -99,124 +101,41 @@ async def browse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         return
     
-    rss_url = get_rss_url(chat_id)
+    feeds = get_all_rss(chat_id)
     
-    if not rss_url:
+    if not feeds:
         await update.message.reply_text(
             "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "📡 *NO RSS FEED*\n"
+            "📡 *NO RSS FEEDS*\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "⚠️ You haven't configured an\n"
-            "RSS feed yet\\!\n\n"
+            "⚠️ You haven't configured any\n"
+            "RSS feeds yet\\!\n\n"
             "━━━━━━━━━━━━━━━━━━━━\n\n"
-            "💡 Use `/setrss <URL>` to set\n"
-            "your RSS feed URL first\\.",
+            "💡 Use `/setrss <URL> <name>`\n"
+            "to add your first RSS feed\\.",
             parse_mode="MarkdownV2",
             reply_markup=get_back_keyboard()
         )
         return
     
-    # Send loading message
-    loading_msg = await update.message.reply_text(
-        "📡 Loading RSS feed\\.\\.\\.\\.\\.\n"
-        "Please wait\\.",
-        parse_mode="MarkdownV2"
-    )
+    # Create buttons for each RSS feed
+    keyboard = []
+    for name in feeds.keys():
+        keyboard.append([
+            InlineKeyboardButton(f"📡 {name}", callback_data=f"rss_select_{name}")
+        ])
     
-    try:
-        # Parse RSS feed
-        feed = feedparser.parse(rss_url)
-        
-        if feed.bozo and not feed.entries:
-            await loading_msg.edit_text(
-                "❌ Failed to parse RSS feed\\!\n\n"
-                "Please check your RSS URL\\.",
-                parse_mode="MarkdownV2"
-            )
-            return
-        
-        if not feed.entries:
-            await loading_msg.edit_text(
-                "📡 *RSS Feed Empty*\n\n"
-                "No torrents found in the feed\\.",
-                parse_mode="MarkdownV2"
-            )
-            return
-        
-        # Get ALL entries (no limit)
-        entries = feed.entries
-        
-        # Initialize selection set if not exists
-        if 'rss_selected' not in context.user_data:
-            context.user_data['rss_selected'] = set()
-        
-        selected = context.user_data['rss_selected']
-        
-        # Create buttons for each entry with visual indicators
-        keyboard = []
-        for idx, entry in enumerate(entries, 1):
-            title = entry.get('title', 'Unknown')
-            category = entry.get('category', '')
-            
-            # Add emoji based on category
-            emoji = "📺" if "series" in category.lower() else "🎬" if "pel" in category.lower() else "📦"
-            
-            # Add checkbox indicator
-            checkbox = "✅" if (idx-1) in selected else "☐"
-            
-            # Truncate title if too long (leave space for emoji and checkbox)
-            max_length = 55
-            if len(title) > max_length:
-                title = title[:max_length-3] + "..."
-            
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"{checkbox} {emoji} {title}",
-                    callback_data=f"rss_toggle_{idx-1}"
-                )
-            ])
-        
-        # Add action buttons
-        action_buttons = []
-        if selected:
-            action_buttons.append(InlineKeyboardButton(
-                f"⬇️ Download ({len(selected)})",
-                callback_data="rss_download_selected"
-            ))
-        action_buttons.append(InlineKeyboardButton("🔙 Back", callback_data="menu"))
-        keyboard.append(action_buttons)
-        
-        # Store feed entries in context for callback
-        context.user_data['rss_entries'] = entries
-        
-        feed_title = feed.feed.get('title', 'RSS Feed')
-        escaped_title = escape_markdown_v2(feed_title)
-        
-        total_text = f"{len(entries)} torrent" if len(entries) == 1 else f"{len(entries)} torrents"
-        selected_text = f" \\| Selected: `{len(selected)}`" if selected else ""
-        
-        await loading_msg.edit_text(
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "📡 *RSS FEED*\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"🎯 *{escaped_title}*\n\n"
-            f"📊 Total: `{total_text}`{selected_text}\n"
-            f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
-            "☐ Click to select \\| ✅ Selected\n"
-            "👇 Choose torrents to download:",
-            parse_mode="MarkdownV2",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-        
-    except Exception as e:
-        logger.error(f"Error fetching RSS feed: {e}")
-        await loading_msg.edit_text(
-            "❌ Error loading RSS feed\\!\n\n"
-            "Please check your connection\n"
-            "or RSS URL\\.",
-            parse_mode="MarkdownV2"
-        )
+    keyboard.append([InlineKeyboardButton("🔙 Back", callback_data="menu")])
+    
+    await update.message.reply_text(
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "📡 *YOUR RSS FEEDS*\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"📊 You have `{len(feeds)}/{MAX_RSS_FEEDS}` feeds\\.\n\n"
+        "👇 Select a feed to browse:",
+        parse_mode="MarkdownV2",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
 
 async def clearrss_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -230,72 +149,230 @@ async def clearrss_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
         return
     
-    if delete_rss_url(chat_id):
-        await update.message.reply_text(
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "✅ *RSS CLEARED\\!*\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "🗑️ Your RSS feed URL has been\n"
-            "removed successfully\\!\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
-            "💡 Use `/setrss <URL>` to set\n"
-            "a new RSS feed\\.",
-            parse_mode="MarkdownV2",
-            reply_markup=get_back_keyboard()
-        )
-    else:
-        await update.message.reply_text(
-            "⚠️ No RSS feed configured\\!\n\n"
-            "Use `/setrss <URL>` to set one\\.",
-            parse_mode="MarkdownV2",
-            reply_markup=get_back_keyboard()
-        )
-
-
-# ==================== RSS Callbacks ====================
-
-async def handle_rss_browse(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle RSS browse and pagination callbacks."""
-    query = update.callback_query
-    chat_id = query.from_user.id
+    feeds = get_all_rss(chat_id)
     
-    rss_url = get_rss_url(chat_id)
-    
-    if not rss_url:
-        await query.edit_message_text(
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "📡 *NO RSS FEED*\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "⚠️ You haven't configured an\n"
-            "RSS feed yet\\!\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
-            "💡 Use `/setrss <URL>` to set\n"
-            "your RSS feed URL first\\.",
+    if not feeds:
+        await update.message.reply_text(
+            "⚠️ No RSS feeds configured\\!\n\n"
+            "Use `/setrss <URL> <name>` to add one\\.",
             parse_mode="MarkdownV2",
             reply_markup=get_back_keyboard()
         )
         return
     
-    # Determine current page
-    if query.data.startswith("rss_page_"):
-        try:
-            page = int(query.data.split("_")[2])
-            context.user_data['rss_current_page'] = page
-        except (ValueError, IndexError):
-            page = 0
-    else:
-        # First time browsing, start at page 0
-        page = 0
-        context.user_data['rss_current_page'] = page
-        
-        # Show loading
+    # Create buttons for each RSS feed
+    keyboard = []
+    for name in feeds.keys():
+        keyboard.append([
+            InlineKeyboardButton(f"🗑️ {name}", callback_data=f"rss_delete_{name}")
+        ])
+    
+    keyboard.append([InlineKeyboardButton("🔙 Back", callback_data="menu")])
+    
+    await update.message.reply_text(
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "🗑️ *DELETE RSS FEED*\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "⚠️ Select a feed to delete:\n\n"
+        "👇 Choose carefully:",
+        parse_mode="MarkdownV2",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+# ==================== RSS Callbacks ====================
+
+async def handle_rss_select(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle RSS feed selection from browse menu."""
+    query = update.callback_query
+    chat_id = query.from_user.id
+    
+    # Extract feed name from callback data
+    feed_name = query.data.replace("rss_select_", "")
+    
+    feeds = get_all_rss(chat_id)
+    rss_url = feeds.get(feed_name)
+    
+    if not rss_url:
+        await query.answer("❌ Feed not found!", show_alert=True)
+        return
+    
+    # Store current feed name in context
+    context.user_data['rss_current_feed'] = feed_name
+    context.user_data['rss_current_page'] = 0
+    context.user_data['rss_selected'] = set()
+    
+    # Show loading
+    await query.edit_message_text(
+        f"📡 Loading *{escape_markdown_v2(feed_name)}*\\.\\.\\.\n"
+        "Please wait\\.",
+        parse_mode="MarkdownV2"
+    )
+    
+    # Parse RSS feed
+    feed = feedparser.parse(rss_url)
+    
+    if feed.bozo and not feed.entries:
         await query.edit_message_text(
-            "📡 Loading RSS feed\\.\\.\\.\\.\\.\n"
+            "❌ Failed to parse RSS feed\\!\n\n"
+            "Please check your RSS URL\\.",
+            parse_mode="MarkdownV2",
+            reply_markup=get_back_keyboard()
+        )
+        return
+    
+    if not feed.entries:
+        await query.edit_message_text(
+            "📡 *RSS Feed Empty*\n\n"
+            "No torrents found in the feed\\.",
+            parse_mode="MarkdownV2",
+            reply_markup=get_back_keyboard()
+        )
+        return
+    
+    # Store feed entries in context
+    context.user_data['rss_entries'] = feed.entries
+    context.user_data['rss_feed_title'] = feed.feed.get('title', feed_name)
+    
+    # Display first page
+    await _display_rss_page(query, context, 0)
+
+
+async def handle_rss_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle RSS feed deletion request - show confirmation."""
+    query = update.callback_query
+    chat_id = query.from_user.id
+    
+    # Extract feed name from callback data
+    feed_name = query.data.replace("rss_delete_", "")
+    
+    # Store name for confirmation
+    context.user_data['rss_delete_pending'] = feed_name
+    
+    escaped_name = escape_markdown_v2(feed_name)
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("✅ Yes, delete", callback_data=f"rss_confirm_delete_{feed_name}"),
+            InlineKeyboardButton("❌ No, cancel", callback_data="rss_cancel_delete")
+        ]
+    ]
+    
+    await query.edit_message_text(
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "⚠️ *CONFIRM DELETE*\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"Are you sure you want to delete\n"
+        f"the RSS feed `{escaped_name}`\\?\n\n"
+        "⚠️ This action cannot be undone\\!",
+        parse_mode="MarkdownV2",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+async def handle_rss_confirm_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle confirmed RSS feed deletion."""
+    query = update.callback_query
+    chat_id = query.from_user.id
+    
+    # Extract feed name
+    feed_name = query.data.replace("rss_confirm_delete_", "")
+    
+    if delete_rss_url(chat_id, feed_name):
+        escaped_name = escape_markdown_v2(feed_name)
+        await query.edit_message_text(
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "✅ *RSS DELETED\\!*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🗑️ Feed `{escaped_name}` has been\n"
+            "removed successfully\\!\n\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "💡 Use `/setrss <URL> <name>`\n"
+            "to add a new feed\\.",
+            parse_mode="MarkdownV2",
+            reply_markup=get_back_keyboard()
+        )
+    else:
+        await query.answer("❌ Error deleting feed!", show_alert=True)
+    
+    # Clear pending delete
+    context.user_data.pop('rss_delete_pending', None)
+
+
+async def handle_rss_cancel_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle cancelled RSS feed deletion."""
+    query = update.callback_query
+    chat_id = query.from_user.id
+    
+    context.user_data.pop('rss_delete_pending', None)
+    
+    # Return to clearrss menu
+    feeds = get_all_rss(chat_id)
+    
+    if not feeds:
+        await query.edit_message_text(
+            "✅ Operation cancelled\\.",
+            parse_mode="MarkdownV2",
+            reply_markup=get_back_keyboard()
+        )
+        return
+    
+    keyboard = []
+    for name in feeds.keys():
+        keyboard.append([
+            InlineKeyboardButton(f"🗑️ {name}", callback_data=f"rss_delete_{name}")
+        ])
+    
+    keyboard.append([InlineKeyboardButton("🔙 Back", callback_data="menu")])
+    
+    await query.edit_message_text(
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "🗑️ *DELETE RSS FEED*\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "⚠️ Select a feed to delete:\n\n"
+        "👇 Choose carefully:",
+        parse_mode="MarkdownV2",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+async def handle_rss_browse(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle RSS browse button from main menu."""
+    query = update.callback_query
+    chat_id = query.from_user.id
+    
+    feeds = get_all_rss(chat_id)
+    
+    if not feeds:
+        await query.edit_message_text(
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "📡 *NO RSS FEEDS*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "⚠️ You haven't configured any\n"
+            "RSS feeds yet\\!\n\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "💡 Use `/setrss <URL> <name>`\n"
+            "to add your first RSS feed\\.",
+            parse_mode="MarkdownV2",
+            reply_markup=get_back_keyboard()
+        )
+        return
+    
+    # If only one feed, go directly to it
+    if len(feeds) == 1:
+        feed_name = list(feeds.keys())[0]
+        context.user_data['rss_current_feed'] = feed_name
+        context.user_data['rss_current_page'] = 0
+        context.user_data['rss_selected'] = set()
+        
+        rss_url = feeds[feed_name]
+        
+        await query.edit_message_text(
+            f"📡 Loading *{escape_markdown_v2(feed_name)}*\\.\\.\\.\n"
             "Please wait\\.",
             parse_mode="MarkdownV2"
         )
         
-        # Parse RSS feed
         feed = feedparser.parse(rss_url)
         
         if feed.bozo and not feed.entries:
@@ -316,23 +393,54 @@ async def handle_rss_browse(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             )
             return
         
-        # Store feed entries in context for callback
         context.user_data['rss_entries'] = feed.entries
-        context.user_data['rss_feed_title'] = feed.feed.get('title', 'RSS Feed')
+        context.user_data['rss_feed_title'] = feed.feed.get('title', feed_name)
+        
+        await _display_rss_page(query, context, 0)
+        return
     
-    # Get entries from context
+    # Multiple feeds - show selection
+    keyboard = []
+    for name in feeds.keys():
+        keyboard.append([
+            InlineKeyboardButton(f"📡 {name}", callback_data=f"rss_select_{name}")
+        ])
+    
+    keyboard.append([InlineKeyboardButton("🔙 Back", callback_data="menu")])
+    
+    await query.edit_message_text(
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "📡 *YOUR RSS FEEDS*\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"📊 You have `{len(feeds)}/{MAX_RSS_FEEDS}` feeds\\.\n\n"
+        "👇 Select a feed to browse:",
+        parse_mode="MarkdownV2",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+async def handle_rss_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle RSS pagination."""
+    query = update.callback_query
+    
+    try:
+        page = int(query.data.split("_")[2])
+        context.user_data['rss_current_page'] = page
+        await _display_rss_page(query, context, page)
+    except (ValueError, IndexError):
+        await query.answer("❌ Error navigating pages", show_alert=True)
+
+
+async def _display_rss_page(query, context: ContextTypes.DEFAULT_TYPE, page: int) -> None:
+    """Display RSS feed page with pagination."""
     entries = context.user_data.get('rss_entries', [])
     feed_title = context.user_data.get('rss_feed_title', 'RSS Feed')
-    
-    # Initialize selection set if not exists
-    if 'rss_selected' not in context.user_data:
-        context.user_data['rss_selected'] = set()
-    
-    selected = context.user_data['rss_selected']
+    feed_name = context.user_data.get('rss_current_feed', '')
+    selected = context.user_data.get('rss_selected', set())
     
     # Pagination
     items_per_page = 15
-    total_pages = math.ceil(len(entries) / items_per_page)
+    total_pages = math.ceil(len(entries) / items_per_page) if entries else 1
     start_idx = page * items_per_page
     end_idx = min(start_idx + items_per_page, len(entries))
     page_entries = entries[start_idx:end_idx]
@@ -344,13 +452,9 @@ async def handle_rss_browse(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         title = entry.get('title', 'Unknown')
         category = entry.get('category', '')
         
-        # Add emoji based on category
         emoji = "📺" if "series" in category.lower() else "🎬" if "pel" in category.lower() else "📦"
-        
-        # Add checkbox indicator
         checkbox = "✅" if global_idx in selected else "☐"
         
-        # Truncate title if too long
         max_length = 55
         if len(title) > max_length:
             title = title[:max_length-3] + "..."
@@ -362,7 +466,7 @@ async def handle_rss_browse(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             )
         ])
     
-    # Add download button if there are selections
+    # Add download button if selections
     if selected:
         keyboard.append([
             InlineKeyboardButton(
@@ -371,34 +475,21 @@ async def handle_rss_browse(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             )
         ])
     
-    # Add navigation buttons
+    # Navigation buttons
     nav_buttons = []
     if page > 0:
-        nav_buttons.append(InlineKeyboardButton(
-            "◀️ Previous",
-            callback_data=f"rss_page_{page-1}"
-        ))
+        nav_buttons.append(InlineKeyboardButton("◀️ Previous", callback_data=f"rss_page_{page-1}"))
     
-    # Page indicator
-    nav_buttons.append(InlineKeyboardButton(
-        f"📄 {page+1}/{total_pages}",
-        callback_data="rss_page_info"
-    ))
+    nav_buttons.append(InlineKeyboardButton(f"📄 {page+1}/{total_pages}", callback_data="rss_page_info"))
     
     if page < total_pages - 1:
-        nav_buttons.append(InlineKeyboardButton(
-            "Next ▶️",
-            callback_data=f"rss_page_{page+1}"
-        ))
+        nav_buttons.append(InlineKeyboardButton("Next ▶️", callback_data=f"rss_page_{page+1}"))
     
     keyboard.append(nav_buttons)
-    
-    # Add cancel button
-    keyboard.append([
-        InlineKeyboardButton("❌ Cancel", callback_data="rss_cancel")
-    ])
+    keyboard.append([InlineKeyboardButton("❌ Cancel", callback_data="rss_cancel")])
     
     escaped_title = escape_markdown_v2(feed_title)
+    escaped_feed_name = escape_markdown_v2(feed_name)
     total_text = f"{len(entries)} torrent" if len(entries) == 1 else f"{len(entries)} torrents"
     selected_text = f" \\| Selected: `{len(selected)}`" if selected else ""
     page_info = f"Page {page+1}/{total_pages} \\({start_idx+1}\\-{end_idx}\\)"
@@ -406,7 +497,7 @@ async def handle_rss_browse(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     try:
         await query.edit_message_text(
             "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "📡 *RSS FEED*\n"
+            f"📡 *{escaped_feed_name}*\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"🎯 *{escaped_title}*\n\n"
             f"📊 Total: `{total_text}`{selected_text}\n"
@@ -419,22 +510,17 @@ async def handle_rss_browse(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
     except BadRequest as e:
-        if "message is not modified" in str(e).lower():
-            # Message content is identical, just answer the query
-            await query.answer()
-        else:
+        if "message is not modified" not in str(e).lower():
             raise
 
 
 async def handle_rss_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle RSS torrent selection toggle."""
     query = update.callback_query
-    chat_id = query.from_user.id
     
     try:
         idx = int(query.data.split("_")[2])
         
-        # Toggle selection
         if 'rss_selected' not in context.user_data:
             context.user_data['rss_selected'] = set()
         
@@ -446,100 +532,8 @@ async def handle_rss_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             selected.add(idx)
             await query.answer("✅ Selected")
         
-        # Get current page and entries
         page = context.user_data.get('rss_current_page', 0)
-        entries = context.user_data.get('rss_entries', [])
-        feed_title = context.user_data.get('rss_feed_title', 'RSS Feed')
-        
-        # Pagination
-        items_per_page = 15
-        total_pages = math.ceil(len(entries) / items_per_page)
-        start_idx = page * items_per_page
-        end_idx = min(start_idx + items_per_page, len(entries))
-        page_entries = entries[start_idx:end_idx]
-        
-        # Rebuild keyboard with updated selections
-        keyboard = []
-        for i, entry in enumerate(page_entries):
-            global_idx = start_idx + i
-            title = entry.get('title', 'Unknown')
-            category = entry.get('category', '')
-            
-            emoji = "📺" if "series" in category.lower() else "🎬" if "pel" in category.lower() else "📦"
-            checkbox = "✅" if global_idx in selected else "☐"
-            
-            max_length = 55
-            if len(title) > max_length:
-                title = title[:max_length-3] + "..."
-            
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"{checkbox} {emoji} {title}",
-                    callback_data=f"rss_toggle_{global_idx}"
-                )
-            ])
-        
-        # Add download button if there are selections
-        if selected:
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"⬇️ Download ({len(selected)})",
-                    callback_data="rss_download_selected"
-                )
-            ])
-        
-        # Add navigation buttons
-        nav_buttons = []
-        if page > 0:
-            nav_buttons.append(InlineKeyboardButton(
-                "◀️ Previous",
-                callback_data=f"rss_page_{page-1}"
-            ))
-        
-        nav_buttons.append(InlineKeyboardButton(
-            f"📄 {page+1}/{total_pages}",
-            callback_data="rss_page_info"
-        ))
-        
-        if page < total_pages - 1:
-            nav_buttons.append(InlineKeyboardButton(
-                "Next ▶️",
-                callback_data=f"rss_page_{page+1}"
-            ))
-        
-        keyboard.append(nav_buttons)
-        
-        # Add cancel button
-        keyboard.append([
-            InlineKeyboardButton("❌ Cancel", callback_data="rss_cancel")
-        ])
-        
-        escaped_title = escape_markdown_v2(feed_title)
-        total_text = f"{len(entries)} torrent" if len(entries) == 1 else f"{len(entries)} torrents"
-        selected_text = f" \\| Selected: `{len(selected)}`" if selected else ""
-        page_info = f"Page {page+1}/{total_pages} \\({start_idx+1}\\-{end_idx}\\)"
-        
-        try:
-            await query.edit_message_text(
-                "━━━━━━━━━━━━━━━━━━━━━━\n"
-                "📡 *RSS FEED*\n"
-                "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"🎯 *{escaped_title}*\n\n"
-                f"📊 Total: `{total_text}`{selected_text}\n"
-                f"📄 {page_info}\n"
-                f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
-                "━━━━━━━━━━━━━━━━━━━━\n\n"
-                "☐ Click to select \\| ✅ Selected\n"
-                "👇 Choose torrents to download:",
-                parse_mode="MarkdownV2",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-        except BadRequest as e:
-            if "message is not modified" in str(e).lower():
-                # Message content is identical, ignore
-                pass
-            else:
-                raise
+        await _display_rss_page(query, context, page)
         
     except Exception as e:
         logger.error(f"Error toggling RSS selection: {e}")
@@ -555,6 +549,7 @@ async def handle_rss_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     context.user_data.pop('rss_entries', None)
     context.user_data.pop('rss_current_page', None)
     context.user_data.pop('rss_feed_title', None)
+    context.user_data.pop('rss_current_feed', None)
     
     menu_message = (
         "━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -563,7 +558,7 @@ async def handle_rss_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         "Select an option below:"
     )
     await query.edit_message_text(
-        menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=bool(get_rss_url(chat_id)))
+        menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=has_rss(chat_id))
     )
 
 
@@ -609,13 +604,11 @@ async def handle_rss_download(update: Update, context: ContextTypes.DEFAULT_TYPE
                 continue
             
             try:
-                # Download torrent
                 with tempfile.NamedTemporaryFile(suffix='.torrent', delete=False) as temp_file:
                     temp_path = temp_file.name
                 
                 urllib.request.urlretrieve(torrent_url, temp_path)
                 
-                # Save to watch folder
                 file_name = f"{torrent_title[:100]}.torrent".replace('/', '_').replace('\\', '_')
                 file_path = os.path.join(WATCH_FOLDER, file_name)
                 
@@ -623,7 +616,7 @@ async def handle_rss_download(update: Update, context: ContextTypes.DEFAULT_TYPE
                     with open(file_path, 'wb') as dst:
                         dst.write(src.read())
                 
-                file_size = os.path.getsize(file_path) / 1024  # KB
+                file_size = os.path.getsize(file_path) / 1024
                 downloaded.append((file_name, file_size))
                 
                 logger.info(f"RSS torrent downloaded: {file_name} (from {user_name}, chat ID: {chat_id})")
@@ -635,10 +628,8 @@ async def handle_rss_download(update: Update, context: ContextTypes.DEFAULT_TYPE
                 logger.error(f"Error downloading {torrent_title}: {e}")
                 failed.append(torrent_title)
         
-        # Clear selection
         context.user_data['rss_selected'] = set()
         
-        # Build summary message
         file_list = ""
         for idx, (name, size) in enumerate(downloaded, 1):
             escaped_name = escape_markdown_v2(name)

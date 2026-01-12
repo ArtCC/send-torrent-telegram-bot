@@ -9,7 +9,7 @@ from telegram.ext import ContextTypes
 
 from bot.config import logger, ALLOWED_CHAT_IDS, WATCH_FOLDER
 from bot.utils import escape_markdown_v2, is_authorized, get_main_menu_keyboard, get_back_keyboard
-from bot.services import get_rss_url
+from bot.services import has_rss
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -38,7 +38,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     )
 
     await update.message.reply_text(
-        welcome_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=bool(get_rss_url(chat_id)))
+        welcome_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=has_rss(chat_id))
     )
 
 
@@ -53,16 +53,16 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "❓ `/help` \\- Show this help guide\n"
         "📊 `/status` \\- Check bot status\n"
         "🔍 `/menu` \\- Show interactive menu\n"
-        "📡 `/setrss <URL>` \\- Set RSS feed\n"
-        "🔎 `/browse` \\- Browse RSS feed\n"
-        "🗑️ `/clearrss` \\- Remove RSS feed\n\n"
+        "📡 `/setrss <URL> <name>` \\- Add RSS\n"
+        "🔎 `/browse` \\- Browse your RSS feeds\n"
+        "🗑️ `/clearrss` \\- Manage RSS feeds\n\n"
         "━━━━━━━━━━━━━━━━━━━━\n\n"
         "*Quick Actions:*\n\n"
         "• Send any `.torrent` file\n"
         "• Use the menu buttons\n"
         "• Check your authorization\n"
-        "• Browse your RSS feed\n\n"
-        "💡 *Tip:* Keep your chat ID safe\\!"
+        "• Browse your RSS feeds\n\n"
+        "💡 *Tip:* Up to 10 RSS feeds\\!"
     )
 
     await update.message.reply_text(
@@ -118,7 +118,7 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     )
 
     await update.message.reply_text(
-        menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=bool(get_rss_url(chat_id)))
+        menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=has_rss(chat_id))
     )
 
 
