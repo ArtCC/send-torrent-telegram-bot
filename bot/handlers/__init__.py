@@ -3,7 +3,7 @@ Telegram Bot Handlers
 Command handlers, callback handlers, and message handlers.
 """
 
-from bot.handlers.commands import start_command, help_command, status_command, menu_command
+from bot.handlers.commands import start_command, help_command, status_command, menu_command, chatid_command, author_command
 from bot.handlers.rss import (
     setrss_command,
     browse_command,
@@ -20,6 +20,8 @@ __all__ = [
     'help_command',
     'status_command',
     'menu_command',
+    'chatid_command',
+    'author_command',
     'setrss_command',
     'browse_command',
     'clearrss_command',

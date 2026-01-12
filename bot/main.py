@@ -39,6 +39,8 @@ from bot.handlers import (
     help_command,
     status_command,
     menu_command,
+    chatid_command,
+    author_command,
     setrss_command,
     browse_command,
     clearrss_command,
@@ -61,9 +63,9 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not is_authorized(chat_id):
         logger.warning(f"Unauthorized access attempt from chat ID: {chat_id}")
         await update.message.reply_text(
-            "╔═══════════════════════╗\n"
-            "      🚫 *ACCESS DENIED*     \n"
-            "╚═══════════════════════╝\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "🚫 *ACCESS DENIED*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "⛔ You are not authorized to use\n"
             "this bot\\.\n\n"
             "🔑 *Your Chat ID:* `{}`\n\n"
@@ -82,9 +84,9 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not file_name.lower().endswith(".torrent"):
         keyboard = [[InlineKeyboardButton("📖 See Help", callback_data="help")]]
         await update.message.reply_text(
-            "╔═══════════════════════╗\n"
-            "     ⚠️ *INVALID FILE*     \n"
-            "╚═══════════════════════╝\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "⚠️ *INVALID FILE*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "❌ This is not a torrent file\\!\n\n"
             "📦 Please send only files with\n"
             "`.torrent` extension\\.\n\n"
@@ -149,9 +151,9 @@ async def send_batch_summary(update: Update, context: ContextTypes.DEFAULT_TYPE,
             if file.success:
                 escaped_name = escape_markdown_v2(file.name)
                 success_message = (
-                    f"╔═══════════════════════╗\n"
-                    f"      ✅ *SUCCESS\\!*      \n"
-                    f"╚═══════════════════════╝\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"✅ *SUCCESS\\!*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
                     f"🎉 Torrent received and saved\\!\n\n"
                     f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
                     f"  📁 *File Details*\n"
@@ -181,9 +183,9 @@ async def send_batch_summary(update: Update, context: ContextTypes.DEFAULT_TYPE,
                 await context.bot.send_message(
                     chat_id=chat_id,
                     text=(
-                        "╔═══════════════════════╗\n"
-                        "        ❌ *ERROR*        \n"
-                        "╚═══════════════════════╝\n\n"
+                        "━━━━━━━━━━━━━━━━━━━━━━\n"
+                        "❌ *ERROR*\n"
+                        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
                         "⚠️ Failed to save the torrent\n"
                         "file\\. Please try again\\.\n\n"
                         "🔧 If the problem persists,\n"
@@ -214,9 +216,9 @@ async def send_batch_summary(update: Update, context: ContextTypes.DEFAULT_TYPE,
                 file_list += f"{idx}\\. `{escaped_name}`\n"
         
         summary_message = (
-            f"╔═══════════════════════╗\n"
-            f"      ✅ *SUCCESS\\!*      \n"
-            f"╚═══════════════════════╝\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"✅ *SUCCESS\\!*\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"🎉 Multiple torrents received\\!\n\n"
             f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
             f"  📁 *Files Processed*\n\n"
@@ -261,11 +263,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     if query.data == "menu":
         menu_message = (
-            "╔═══════════════════════╗\n"
-            "       🎯 *MAIN MENU*       \n"
-            "╚═══════════════════════╝\n\n"
-            "Select an option below:\n\n"
-            "━━━━━━━━━━━━━━━━━━━━"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "🎯 *MAIN MENU*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "Select an option below:"
         )
         await query.edit_message_text(
             menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=bool(get_rss_url(chat_id)))
@@ -288,9 +289,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     elif query.data == "help":
         help_message = (
-            "╔═══════════════════════╗\n"
-            "       📖 *HELP GUIDE*       \n"
-            "╚═══════════════════════╝\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "📖 *HELP GUIDE*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "*Available Commands:*\n\n"
             "🏠 `/start` \\- Main menu \\& welcome\n"
             "❓ `/help` \\- Show this help guide\n"
@@ -322,9 +323,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             torrent_count = 0
 
         status_message = (
-            f"╔═══════════════════════╗\n"
-            f"      📊 *BOT STATUS*      \n"
-            f"╚═══════════════════════╝\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📊 *BOT STATUS*\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"🟢 *System:* `ONLINE`\n\n"
             f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
             f"  🔑 *Your Access*\n"
@@ -344,9 +345,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     elif query.data == "howto":
         howto_message = (
-            "╔═══════════════════════╗\n"
-            "      📋 *HOW TO USE*      \n"
-            "╚═══════════════════════╝\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "📋 *HOW TO USE*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "*Step\\-by\\-step Guide:*\n\n"
             "1️⃣ Find a `.torrent` file\n"
             "2️⃣ Send it to this bot\n"
@@ -367,9 +368,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     elif query.data == "chatid":
         chat_id_message = (
-            f"╔═══════════════════════╗\n"
-            f"      🔑 *YOUR CHAT ID*      \n"
-            f"╚═══════════════════════╝\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🔑 *YOUR CHAT ID*\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"👤 *User:* {user_name}\n"
             f"🆔 *Chat ID:* `{chat_id}`\n\n"
             f"━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -387,9 +388,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     elif query.data == "author":
         author_message = (
-            "╔═══════════════════════╗\n"
-            "      👨‍💻 *AUTHOR*      \n"
-            "╚═══════════════════════╝\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "👨‍💻 *AUTHOR*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "*Arturo Carretero Calvo*\n\n"
             "━━━━━━━━━━━━━━━━━━━━\n\n"
             "💻 *GitHub:*\n"
@@ -420,9 +421,9 @@ async def handle_other_messages(update: Update, context: ContextTypes.DEFAULT_TY
     ]
 
     await update.message.reply_text(
-        "╔═══════════════════════╗\n"
-        "       ℹ️ *INFO*       \n"
-        "╚═══════════════════════╝\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "ℹ️ *INFO*\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
         "📦 Please send me a `.torrent` file\\.\n\n"
         "Use the buttons below for help\\!",
         parse_mode="MarkdownV2",
@@ -437,6 +438,8 @@ async def setup_bot_commands(application: Application) -> None:
         BotCommand("menu", "🎯 Show interactive menu"),
         BotCommand("help", "📖 Show help and usage guide"),
         BotCommand("status", "📊 Check bot status and info"),
+        BotCommand("chatid", "🔑 Show your Chat ID"),
+        BotCommand("author", "👨‍💻 About the author"),
         BotCommand("setrss", "📡 Set your RSS feed URL"),
         BotCommand("browse", "🔎 Browse your RSS feed"),
         BotCommand("clearrss", "🗑️ Remove your RSS feed"),
@@ -459,6 +462,8 @@ def main() -> None:
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("status", status_command))
     application.add_handler(CommandHandler("menu", menu_command))
+    application.add_handler(CommandHandler("chatid", chatid_command))
+    application.add_handler(CommandHandler("author", author_command))
     application.add_handler(CommandHandler("setrss", setrss_command))
     application.add_handler(CommandHandler("browse", browse_command))
     application.add_handler(CommandHandler("clearrss", clearrss_command))

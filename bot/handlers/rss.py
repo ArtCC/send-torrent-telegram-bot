@@ -33,9 +33,9 @@ async def setrss_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Check if URL was provided
     if not context.args or len(context.args) == 0:
         await update.message.reply_text(
-            "╔═══════════════════════╗\n"
-            "      📡 *SET RSS FEED*      \n"
-            "╚═══════════════════════╝\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "📡 *SET RSS FEED*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "⚠️ Please provide an RSS URL\\!\n\n"
             "*Usage:*\n"
             "`/setrss <RSS\\_URL>`\n\n"
@@ -66,9 +66,9 @@ async def setrss_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         escaped_url = rss_url.replace('.', '\\.').replace('-', '\\-').replace('_', '\\_')
         
         await update.message.reply_text(
-            "╔═══════════════════════╗\n"
-            "      ✅ *RSS SAVED\\!*      \n"
-            "╚═══════════════════════╝\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "✅ *RSS SAVED\\!*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "🎉 Your RSS feed URL has been\n"
             "saved successfully\\!\n\n"
             "📡 *Feed URL:*\n"
@@ -103,9 +103,9 @@ async def browse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     if not rss_url:
         await update.message.reply_text(
-            "╔═══════════════════════╗\n"
-            "      📡 *NO RSS FEED*      \n"
-            "╚═══════════════════════╝\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "📡 *NO RSS FEED*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "⚠️ You haven't configured an\n"
             "RSS feed yet\\!\n\n"
             "━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -196,9 +196,9 @@ async def browse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         selected_text = f" \\| Selected: `{len(selected)}`" if selected else ""
         
         await loading_msg.edit_text(
-            "╔═══════════════════════╗\n"
-            "      📡 *RSS FEED*      \n"
-            "╚═══════════════════════╝\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "📡 *RSS FEED*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"🎯 *{escaped_title}*\n\n"
             f"📊 Total: `{total_text}`{selected_text}\n"
             f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
@@ -232,9 +232,9 @@ async def clearrss_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     
     if delete_rss_url(chat_id):
         await update.message.reply_text(
-            "╔═══════════════════════╗\n"
-            "      ✅ *RSS CLEARED\\!*      \n"
-            "╚═══════════════════════╝\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "✅ *RSS CLEARED\\!*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "🗑️ Your RSS feed URL has been\n"
             "removed successfully\\!\n\n"
             "━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -263,9 +263,9 @@ async def handle_rss_browse(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     
     if not rss_url:
         await query.edit_message_text(
-            "╔═══════════════════════╗\n"
-            "      📡 *NO RSS FEED*      \n"
-            "╚═══════════════════════╝\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "📡 *NO RSS FEED*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "⚠️ You haven't configured an\n"
             "RSS feed yet\\!\n\n"
             "━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -405,9 +405,9 @@ async def handle_rss_browse(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     
     try:
         await query.edit_message_text(
-            "╔═══════════════════════╗\n"
-            "      📡 *RSS FEED*      \n"
-            "╚═══════════════════════╝\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "📡 *RSS FEED*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"🎯 *{escaped_title}*\n\n"
             f"📊 Total: `{total_text}`{selected_text}\n"
             f"📄 {page_info}\n"
@@ -521,9 +521,9 @@ async def handle_rss_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         
         try:
             await query.edit_message_text(
-                "╔═══════════════════════╗\n"
-                "      📡 *RSS FEED*      \n"
-                "╚═══════════════════════╝\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━━\n"
+                "📡 *RSS FEED*\n"
+                "━━━━━━━━━━━━━━━━━━━━━━\n\n"
                 f"🎯 *{escaped_title}*\n\n"
                 f"📊 Total: `{total_text}`{selected_text}\n"
                 f"📄 {page_info}\n"
@@ -557,11 +557,10 @@ async def handle_rss_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     context.user_data.pop('rss_feed_title', None)
     
     menu_message = (
-        "╔═══════════════════════╗\n"
-        "       🎯 *MAIN MENU*       \n"
-        "╚═══════════════════════╝\n\n"
-        "Select an option below:\n\n"
-        "━━━━━━━━━━━━━━━━━━━━"
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "🎯 *MAIN MENU*\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "Select an option below:"
     )
     await query.edit_message_text(
         menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=bool(get_rss_url(chat_id)))
@@ -658,9 +657,9 @@ async def handle_rss_download(update: Update, context: ContextTypes.DEFAULT_TYPE
         success_msg = "torrent" if len(downloaded) == 1 else "torrents"
         
         await query.edit_message_text(
-            "╔═══════════════════════╗\n"
-            "      ✅ *SUCCESS\\!*      \n"
-            "╚═══════════════════════╝\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "✅ *SUCCESS\\!*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"🎉 {len(downloaded)} {success_msg} downloaded from RSS\\!\n\n"
             "┏━━━━━━━━━━━━━━━━━━━━┓\n"
             "  📁 *Downloaded Files*\n\n"

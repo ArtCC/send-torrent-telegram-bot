@@ -23,9 +23,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     auth_emoji = "✅" if is_auth else "⚠️"
 
     welcome_message = (
-        f"╔═══════════════════════╗\n"
-        f"   🤖 *SEND TORRENT BOT*   \n"
-        f"╚═══════════════════════╝\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🤖 *SEND TORRENT BOT*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
         f"👋 Welcome *{user_name}*\\!\n\n"
         f"I help you manage torrents remotely\\.\n"
         f"Just send me a `.torrent` file and I'll\n"
@@ -45,9 +45,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /help command."""
     help_message = (
-        "╔═══════════════════════╗\n"
-        "       📖 *HELP GUIDE*       \n"
-        "╚═══════════════════════╝\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "📖 *HELP GUIDE*\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
         "*Available Commands:*\n\n"
         "🏠 `/start` \\- Main menu \\& welcome\n"
         "❓ `/help` \\- Show this help guide\n"
@@ -85,9 +85,9 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         torrent_count = 0
 
     status_message = (
-        f"╔═══════════════════════╗\n"
-        f"      📊 *BOT STATUS*      \n"
-        f"╚═══════════════════════╝\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📊 *BOT STATUS*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
         f"🟢 *System:* `ONLINE`\n\n"
         f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
         f"  🔑 *Your Access*\n"
@@ -111,13 +111,60 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     """Handle /menu command."""
     chat_id = update.effective_chat.id
     menu_message = (
-        "╔═══════════════════════╗\n"
-        "       🎯 *MAIN MENU*       \n"
-        "╚═══════════════════════╝\n\n"
-        "Select an option below:\n\n"
-        "━━━━━━━━━━━━━━━━━━━━"
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "🎯 *MAIN MENU*\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "Select an option below:"
     )
 
     await update.message.reply_text(
         menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=bool(get_rss_url(chat_id)))
+    )
+
+
+async def chatid_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /chatid command."""
+    chat_id = update.effective_chat.id
+    user_name = update.effective_user.first_name or "User"
+
+    chat_id_message = (
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🔑 *YOUR CHAT ID*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"👤 *User:* {user_name}\n"
+        f"🆔 *Chat ID:* `{chat_id}`\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"💡 *Usage:*\n\n"
+        f"Add this ID to the\n"
+        f"`ALLOWED_CHAT_IDS` variable\n"
+        f"in your `.env` file\\.\n\n"
+        f"Example:\n"
+        f"`ALLOWED_CHAT_IDS={chat_id}`\n\n"
+        f"⚠️ Keep this ID private\\!"
+    )
+
+    await update.message.reply_text(
+        chat_id_message, parse_mode="MarkdownV2", reply_markup=get_back_keyboard()
+    )
+
+
+async def author_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /author command."""
+    author_message = (
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "👨‍💻 *AUTHOR*\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "*Arturo Carretero Calvo*\n\n"
+        "━━━━━━━━━━━━━━━━━━━━\n\n"
+        "💻 *GitHub:*\n"
+        "[github\\.com/ArtCC](https://github.com/ArtCC)\n\n"
+        "🚀 Check out my other projects\\!\n\n"
+        "━━━━━━━━━━━━━━━━━━━━\n\n"
+        "✨ *Built with:*\n"
+        "GitHub Copilot \(Claude Sonnet 4\\.5\)\n\n"
+        "📄 *License:* Apache 2\\.0"
+    )
+
+    await update.message.reply_text(
+        author_message, parse_mode="MarkdownV2", reply_markup=get_back_keyboard()
     )
