@@ -21,6 +21,7 @@ from telegram.ext import (
     ContextTypes,
     CallbackQueryHandler,
 )
+from telegram.error import NetworkError, TimedOut
 
 # Import configuration and models
 from bot.config import (
@@ -467,6 +468,28 @@ async def setup_bot_commands(application: Application) -> None:
     await application.bot.set_my_commands(commands)
 
 
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle errors globally."""
+    error = context.error
+    
+    # Network errors are common and expected, just log them quietly
+    if isinstance(error, (NetworkError, TimedOut)):
+        logger.warning(f"Network error (will retry automatically): {error}")
+        return
+    
+    # Log other errors with more detail
+    logger.error(f"Exception while handling an update: {error}", exc_info=context.error)
+    
+    # Notify user if possible
+    if update and hasattr(update, 'effective_message') and update.effective_message:
+        try:
+            await update.effective_message.reply_text(
+                "⚠️ An error occurred while processing your request. Please try again."
+            )
+        except Exception:
+            pass  # If we can't notify, just log it
+
+
 def main() -> None:
     """Start the bot."""
     logger.info("Starting Send Torrent Telegram Bot...")
@@ -490,6 +513,9 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_other_messages))
+    
+    # Add error handler
+    application.add_error_handler(error_handler)
 
     # Start the bot
     logger.info("Bot is running...")
