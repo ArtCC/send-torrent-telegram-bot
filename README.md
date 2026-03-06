@@ -70,6 +70,14 @@ RSS_DATA_PATH=./data
 
 # Path to RSS storage file inside the container
 RSS_STORAGE_FILE=/data/rss_urls.json
+
+# Delete .torrent files from watch folder after they are saved
+# Useful if your torrent client does not delete them automatically
+AUTO_DELETE_WATCH_TORRENTS=false
+
+# Delay before deleting files from /watch (seconds)
+# Keep this high enough so qBittorrent can import the torrent first
+WATCH_CLEANUP_DELAY_SECONDS=30
 ```
 
 ### 4. Deploy with Docker Compose
@@ -158,6 +166,13 @@ The bot can browse your private tracker RSS feeds and download torrents directly
 1. In qBittorrent settings, enable "Automatically add torrents from"
 2. Set the path to match your `TORRENT_WATCH_PATH`
 3. (Optional) Enable "Delete .torrent files afterwards"
+
+If you prefer cleaning from this bot instead of qBittorrent, set:
+
+- `AUTO_DELETE_WATCH_TORRENTS=true`
+- `WATCH_CLEANUP_DELAY_SECONDS=30` (or higher if needed)
+
+This cleanup runs after saving to `/watch`, with the configured delay.
 
 Example docker-compose for qBittorrent:
 

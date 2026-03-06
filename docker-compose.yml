@@ -10,6 +10,8 @@ services:
       - ALLOWED_CHAT_IDS=${ALLOWED_CHAT_IDS}
       - WATCH_FOLDER=/watch
       - RSS_STORAGE_FILE=/data/rss_urls.json
+      - AUTO_DELETE_WATCH_TORRENTS=${AUTO_DELETE_WATCH_TORRENTS:-false}
+      - WATCH_CLEANUP_DELAY_SECONDS=${WATCH_CLEANUP_DELAY_SECONDS:-30}
     volumes:
       # Mount the watch folder - this should be the same folder your torrent client monitors
       - ${TORRENT_WATCH_PATH:-./watch}:/watch

@@ -13,7 +13,13 @@ from telegram.ext import ContextTypes
 from telegram.error import BadRequest
 
 from bot.config import logger, WATCH_FOLDER
-from bot.utils import escape_markdown_v2, is_authorized, get_main_menu_keyboard, get_back_keyboard
+from bot.utils import (
+    escape_markdown_v2,
+    is_authorized,
+    get_main_menu_keyboard,
+    get_back_keyboard,
+    schedule_torrent_cleanup,
+)
 from bot.services import save_rss_url, delete_rss_url, get_rss_url, get_all_rss, has_rss, MAX_RSS_FEEDS
 
 
@@ -615,6 +621,8 @@ async def handle_rss_download(update: Update, context: ContextTypes.DEFAULT_TYPE
                 with open(temp_path, 'rb') as src:
                     with open(file_path, 'wb') as dst:
                         dst.write(src.read())
+
+                schedule_torrent_cleanup(file_path)
                 
                 file_size = os.path.getsize(file_path) / 1024
                 downloaded.append((file_name, file_size))

@@ -33,7 +33,13 @@ from bot.config import (
     BATCH_TIMEOUT,
 )
 from bot.models import TorrentFile, batch_queues, batch_tasks
-from bot.utils import escape_markdown_v2, is_authorized, get_main_menu_keyboard, get_back_keyboard
+from bot.utils import (
+    escape_markdown_v2,
+    is_authorized,
+    get_main_menu_keyboard,
+    get_back_keyboard,
+    schedule_torrent_cleanup,
+)
 from bot.services import has_rss
 from bot.handlers import (
     start_command,
@@ -108,6 +114,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         file = await context.bot.get_file(document.file_id)
         file_path = os.path.join(WATCH_FOLDER, file_name)
         await file.download_to_drive(file_path)
+        schedule_torrent_cleanup(file_path)
         
         logger.info(f"Torrent file saved: {file_name} (from {user_name}, chat ID: {chat_id})")
         
