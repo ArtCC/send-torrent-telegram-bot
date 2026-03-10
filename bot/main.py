@@ -12,7 +12,7 @@ import feedparser
 from pathlib import Path
 from typing import Dict, List, Optional
 from datetime import datetime
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
+from telegram import Update, BotCommand
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -36,8 +36,12 @@ from bot.models import TorrentFile, batch_queues, batch_tasks
 from bot.utils import (
     escape_markdown_v2,
     is_authorized,
-    get_main_menu_keyboard,
     get_back_keyboard,
+    get_persistent_keyboard,
+    BTN_START,
+    BTN_HELP,
+    BTN_STATUS,
+    BTN_BROWSE_RSS,
     schedule_torrent_cleanup,
 )
 from bot.services import has_rss
@@ -85,6 +89,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             "to gain access\\.\n\n"
             "Use /start for more info\\.".format(chat_id),
             parse_mode="MarkdownV2",
+            reply_markup=get_persistent_keyboard(has_rss=False),
         )
         return
 
@@ -94,7 +99,6 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     # Check if file is a torrent
     if not file_name.lower().endswith(".torrent"):
-        keyboard = [[InlineKeyboardButton("📖 See Help", callback_data="help")]]
         await update.message.reply_text(
             "━━━━━━━━━━━━━━━━━━━━━━\n"
             "⚠️ *INVALID FILE*\n"
@@ -105,7 +109,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             "💡 Drag \\& drop your torrent file\n"
             "or click the attachment button\\.",
             parse_mode="MarkdownV2",
-            reply_markup=InlineKeyboardMarkup(keyboard),
+            reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
         )
         return
 
@@ -179,20 +183,13 @@ async def send_batch_summary(update: Update, context: ContextTypes.DEFAULT_TYPE,
                     f"━━━━━━━━━━━━━━━━━━━━\n"
                     f"💚 Happy downloading, *{user_name}*\\!"
                 )
-                keyboard = [
-                    [
-                        InlineKeyboardButton("📊 Check Status", callback_data="status"),
-                        InlineKeyboardButton("🔙 Menu", callback_data="menu"),
-                    ]
-                ]
                 await context.bot.send_message(
                     chat_id=chat_id,
                     text=success_message,
                     parse_mode="MarkdownV2",
-                    reply_markup=InlineKeyboardMarkup(keyboard)
+                    reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
                 )
             else:
-                keyboard = [[InlineKeyboardButton("🔄 Try Again", callback_data="menu")]]
                 await context.bot.send_message(
                     chat_id=chat_id,
                     text=(
@@ -205,7 +202,7 @@ async def send_batch_summary(update: Update, context: ContextTypes.DEFAULT_TYPE,
                         "contact the administrator\\."
                     ),
                     parse_mode="MarkdownV2",
-                    reply_markup=InlineKeyboardMarkup(keyboard)
+                    reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
                 )
             return
         
@@ -243,18 +240,11 @@ async def send_batch_summary(update: Update, context: ContextTypes.DEFAULT_TYPE,
             f"💚 Happy downloading, *{user_name}*\\!"
         )
         
-        keyboard = [
-            [
-                InlineKeyboardButton("📊 Check Status", callback_data="status"),
-                InlineKeyboardButton("🔙 Menu", callback_data="menu"),
-            ]
-        ]
-        
         await context.bot.send_message(
             chat_id=chat_id,
             text=summary_message,
             parse_mode="MarkdownV2",
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
         )
         
     except asyncio.CancelledError:
@@ -275,14 +265,16 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     user_name = query.from_user.first_name or "User"
 
     if query.data == "menu":
-        menu_message = (
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "🎯 *MAIN MENU*\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "Select an option below:"
-        )
+        menu_message = "ℹ️ Context closed\\. Use the persistent keyboard below for global actions\\."
         await query.edit_message_text(
-            menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=has_rss(chat_id))
+            menu_message,
+            parse_mode="MarkdownV2",
+        )
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="ℹ️ Choose your next action from the keyboard\\.",
+            parse_mode="MarkdownV2",
+            reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
         )
     
     elif query.data == "rss_browse":
@@ -441,21 +433,29 @@ async def handle_other_messages(update: Update, context: ContextTypes.DEFAULT_TY
     if not is_authorized(chat_id):
         return
 
-    keyboard = [
-        [
-            InlineKeyboardButton("📖 Help", callback_data="help"),
-            InlineKeyboardButton("📋 How to Use", callback_data="howto"),
-        ]
-    ]
+    text = (update.message.text or "").strip()
+
+    if text == BTN_START:
+        await start_command(update, context)
+        return
+    if text == BTN_HELP:
+        await help_command(update, context)
+        return
+    if text == BTN_STATUS:
+        await status_command(update, context)
+        return
+    if text == BTN_BROWSE_RSS:
+        await browse_command(update, context)
+        return
 
     await update.message.reply_text(
         "━━━━━━━━━━━━━━━━━━━━━━\n"
         "ℹ️ *INFO*\n"
         "━━━━━━━━━━━━━━━━━━━━━━\n\n"
         "📦 Please send me a `.torrent` file\\.\n\n"
-        "Use the buttons below for help\\!",
+        "Use the persistent keyboard or slash commands for navigation\\.",
         parse_mode="MarkdownV2",
-        reply_markup=InlineKeyboardMarkup(keyboard),
+        reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
     )
 
 
@@ -463,7 +463,7 @@ async def setup_bot_commands(application: Application) -> None:
     """Set up bot commands for the menu."""
     commands = [
         BotCommand("start", "🏠 Start the bot and show main menu"),
-        BotCommand("menu", "🎯 Show interactive menu"),
+        BotCommand("menu", "🎯 Show global navigation keyboard"),
         BotCommand("help", "📖 Show help and usage guide"),
         BotCommand("status", "📊 Check bot status and info"),
         BotCommand("chatid", "🔑 Show your Chat ID"),

@@ -4,11 +4,14 @@ Basic bot commands (start, help, status, menu).
 """
 
 import os
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.ext import ContextTypes
 
 from bot.config import logger, ALLOWED_CHAT_IDS, WATCH_FOLDER
-from bot.utils import escape_markdown_v2, is_authorized, get_main_menu_keyboard, get_back_keyboard
+from bot.utils import (
+    is_authorized,
+    get_persistent_keyboard,
+)
 from bot.services import has_rss
 
 
@@ -38,12 +41,15 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     )
 
     await update.message.reply_text(
-        welcome_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=has_rss(chat_id))
+        welcome_message,
+        parse_mode="MarkdownV2",
+        reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
     )
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /help command."""
+    chat_id = update.effective_chat.id
     help_message = (
         "━━━━━━━━━━━━━━━━━━━━━━\n"
         "📖 *HELP GUIDE*\n"
@@ -66,7 +72,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     )
 
     await update.message.reply_text(
-        help_message, parse_mode="MarkdownV2", reply_markup=get_back_keyboard()
+        help_message,
+        parse_mode="MarkdownV2",
+        reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
     )
 
 
@@ -103,7 +111,9 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
 
     await update.message.reply_text(
-        status_message, parse_mode="MarkdownV2", reply_markup=get_back_keyboard()
+        status_message,
+        parse_mode="MarkdownV2",
+        reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
     )
 
 
@@ -111,14 +121,14 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     """Handle /menu command."""
     chat_id = update.effective_chat.id
     menu_message = (
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "🎯 *MAIN MENU*\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "Select an option below:"
+        "ℹ️ *Main actions are available in the persistent keyboard below\\.*\n\n"
+        "You can also use slash commands anytime\\."
     )
 
     await update.message.reply_text(
-        menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=has_rss(chat_id))
+        menu_message,
+        parse_mode="MarkdownV2",
+        reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
     )
 
 
@@ -144,12 +154,15 @@ async def chatid_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
 
     await update.message.reply_text(
-        chat_id_message, parse_mode="MarkdownV2", reply_markup=get_back_keyboard()
+        chat_id_message,
+        parse_mode="MarkdownV2",
+        reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
     )
 
 
 async def author_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /author command."""
+    chat_id = update.effective_chat.id
     author_message = (
         "━━━━━━━━━━━━━━━━━━━━━━\n"
         "👨‍💻 *AUTHOR*\n"
@@ -166,5 +179,7 @@ async def author_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
 
     await update.message.reply_text(
-        author_message, parse_mode="MarkdownV2", reply_markup=get_back_keyboard()
+        author_message,
+        parse_mode="MarkdownV2",
+        reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
     )

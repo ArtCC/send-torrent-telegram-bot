@@ -16,8 +16,8 @@ from bot.config import logger, WATCH_FOLDER
 from bot.utils import (
     escape_markdown_v2,
     is_authorized,
-    get_main_menu_keyboard,
     get_back_keyboard,
+    get_persistent_keyboard,
     schedule_torrent_cleanup,
 )
 from bot.services import save_rss_url, delete_rss_url, get_rss_url, get_all_rss, has_rss, MAX_RSS_FEEDS
@@ -31,8 +31,10 @@ async def setrss_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     if not is_authorized(chat_id):
         await update.message.reply_text(
-            "⛔ You are not authorized to use this bot\\.",
-            parse_mode="MarkdownV2"
+            "❌ You are not authorized to use this bot\\.\n"
+            "Use /chatid to get your ID and ask an admin for access\\.",
+            parse_mode="MarkdownV2",
+            reply_markup=get_persistent_keyboard(has_rss=False),
         )
         return
     
@@ -50,7 +52,7 @@ async def setrss_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "💡 Name cannot contain spaces\\.\n"
             f"📊 Maximum {MAX_RSS_FEEDS} RSS feeds allowed\\.",
             parse_mode="MarkdownV2",
-            reply_markup=get_back_keyboard()
+            reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
         )
         return
     
@@ -85,14 +87,15 @@ async def setrss_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "💡 Use `/browse` to view your feeds\\!\n"
             "🗑️ Use `/clearrss` to manage them\\.",
             parse_mode="MarkdownV2",
-            reply_markup=get_back_keyboard()
+            reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
         )
     else:
         escaped_message = escape_markdown_v2(message)
         await update.message.reply_text(
             f"❌ {escaped_message}\n\n"
             f"📊 Limit: {MAX_RSS_FEEDS} feeds per user\\.",
-            parse_mode="MarkdownV2"
+            parse_mode="MarkdownV2",
+            reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
         )
 
 
@@ -102,8 +105,10 @@ async def browse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     if not is_authorized(chat_id):
         await update.message.reply_text(
-            "⛔ You are not authorized to use this bot\\.",
-            parse_mode="MarkdownV2"
+            "❌ You are not authorized to use this bot\\.\n"
+            "Use /chatid to get your ID and ask an admin for access\\.",
+            parse_mode="MarkdownV2",
+            reply_markup=get_persistent_keyboard(has_rss=False),
         )
         return
     
@@ -120,7 +125,7 @@ async def browse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "💡 Use `/setrss <URL> <name>`\n"
             "to add your first RSS feed\\.",
             parse_mode="MarkdownV2",
-            reply_markup=get_back_keyboard()
+            reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
         )
         return
     
@@ -150,8 +155,10 @@ async def clearrss_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     
     if not is_authorized(chat_id):
         await update.message.reply_text(
-            "⛔ You are not authorized to use this bot\\.",
-            parse_mode="MarkdownV2"
+            "❌ You are not authorized to use this bot\\.\n"
+            "Use /chatid to get your ID and ask an admin for access\\.",
+            parse_mode="MarkdownV2",
+            reply_markup=get_persistent_keyboard(has_rss=False),
         )
         return
     
@@ -162,7 +169,7 @@ async def clearrss_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             "⚠️ No RSS feeds configured\\!\n\n"
             "Use `/setrss <URL> <name>` to add one\\.",
             parse_mode="MarkdownV2",
-            reply_markup=get_back_keyboard()
+            reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
         )
         return
     
@@ -557,14 +564,15 @@ async def handle_rss_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     context.user_data.pop('rss_feed_title', None)
     context.user_data.pop('rss_current_feed', None)
     
-    menu_message = (
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "🎯 *MAIN MENU*\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "Select an option below:"
-    )
     await query.edit_message_text(
-        menu_message, parse_mode="MarkdownV2", reply_markup=get_main_menu_keyboard(has_rss=has_rss(chat_id))
+        "ℹ️ Selection canceled\\. Use the persistent keyboard for the next action\\.",
+        parse_mode="MarkdownV2",
+    )
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text="ℹ️ You can browse feeds again or run another command from the keyboard\\.",
+        parse_mode="MarkdownV2",
+        reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
     )
 
 

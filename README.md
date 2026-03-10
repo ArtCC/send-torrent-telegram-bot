@@ -22,7 +22,7 @@ Perfect for managing your torrents remotely through Telegram!
 - 📦 **Lightweight**: Minimal Python dependencies
 - 🚀 **Fast**: Instant torrent file transfer to your download manager
 - 🔍 **Logging**: Complete activity logging for monitoring
-- 🎨 **Visual UI**: Beautiful interface with inline menus and buttons
+- 🎨 **Consistent UX/UI**: Persistent keyboard for global navigation and inline buttons for contextual flows
 
 ## 📋 Prerequisites
 
@@ -117,7 +117,7 @@ The bot can browse your private tracker RSS feeds and download torrents directly
    
 2. **Browse your feeds**:
    - Use `/browse` command, or
-   - Click "📡 Browse RSS Feed" button from the main menu
+  - Use the persistent keyboard button "📡 Browse RSS"
    - If you have multiple feeds, you'll see buttons to select which one to browse
    - If you have only one feed, it opens directly
    
@@ -149,15 +149,22 @@ The bot can browse your private tracker RSS feeds and download torrents directly
 
 ### Available Commands
 
-- `/start` - Show welcome message and main menu
+- `/start` - Show welcome message and global navigation keyboard
 - `/help` - Show help information and all commands
 - `/status` - Check bot status and authorization
-- `/menu` - Show interactive menu with buttons
+- `/menu` - Re-show global navigation keyboard
 - `/chatid` - Show your Chat ID
 - `/author` - About the author
 - `/setrss <URL> <name>` - Add RSS feed with custom name (max 10)
 - `/browse` - Browse and download from your RSS feeds
 - `/clearrss` - Manage and delete your RSS feeds
+
+## Persistent Keyboard
+
+- `🏠 Start`
+- `📖 Help`
+- `📊 Status`
+- `📡 Browse RSS` (shown when you have at least one configured feed)
 
 ## 🔧 Integration with Torrent Clients
 
