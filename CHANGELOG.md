@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 The format is inspired by Keep a Changelog, and this project follows semantic versioning.
 
+## [0.0.11] - 2026-03-10
+
+### Changed
+- Removed redundant "Context closed" double-message when pressing 🔙 Back. Now only a single message with the persistent keyboard is shown.
+
 ## [0.0.10] - 2026-03-10
 
 ### Changed
