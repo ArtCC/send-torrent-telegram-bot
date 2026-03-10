@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is inspired by Keep a Changelog, and this project follows semantic versioning.
 
+## [0.0.10] - 2026-03-10
+
+### Changed
+- RSS item listing now shows full titles in the message body (up to 150 characters) instead of truncating them inside buttons.
+- Replaced one-button-per-item layout with compact numbered buttons (5 per row) for torrent selection.
+
 ## [0.0.9] - 2026-03-10
 
 ### Changed

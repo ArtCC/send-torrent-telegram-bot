@@ -437,7 +437,7 @@ async def _display_rss_page(query, context: ContextTypes.DEFAULT_TYPE, page: int
         emoji = "📺" if "series" in category.lower() else "🎬" if "pel" in category.lower() else "📦"
         checkbox = "✅" if global_idx in selected else "☐"
 
-        max_length = 80
+        max_length = 150
         if len(title) > max_length:
             title = title[:max_length - 3] + "..."
 
