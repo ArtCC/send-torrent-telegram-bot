@@ -419,35 +419,47 @@ async def _display_rss_page(query, context: ContextTypes.DEFAULT_TYPE, page: int
     feed_title = context.user_data.get('rss_feed_title', 'RSS Feed')
     feed_name = context.user_data.get('rss_current_feed', '')
     selected = context.user_data.get('rss_selected', set())
-    
+
     # Pagination
     items_per_page = 15
     total_pages = math.ceil(len(entries) / items_per_page) if entries else 1
     start_idx = page * items_per_page
     end_idx = min(start_idx + items_per_page, len(entries))
     page_entries = entries[start_idx:end_idx]
-    
-    # Create buttons for current page entries
-    keyboard = []
+
+    # Build item list in message body so full titles are visible
+    items_text = ""
     for i, entry in enumerate(page_entries):
         global_idx = start_idx + i
         title = entry.get('title', 'Unknown')
         category = entry.get('category', '')
-        
+
         emoji = "📺" if "series" in category.lower() else "🎬" if "pel" in category.lower() else "📦"
         checkbox = "✅" if global_idx in selected else "☐"
-        
-        max_length = 55
+
+        max_length = 80
         if len(title) > max_length:
-            title = title[:max_length-3] + "..."
-        
-        keyboard.append([
-            InlineKeyboardButton(
-                f"{checkbox} {emoji} {title}",
-                callback_data=f"rss_toggle_{global_idx}"
-            )
-        ])
-    
+            title = title[:max_length - 3] + "..."
+
+        escaped_item_title = escape_markdown_v2(title)
+        items_text += f"`{i + 1:2d}`\\. {checkbox} {emoji} {escaped_item_title}\n"
+
+    # Compact numbered buttons (5 per row) instead of one-per-row titles
+    keyboard = []
+    row = []
+    for i, entry in enumerate(page_entries):
+        global_idx = start_idx + i
+        checkbox = "✅" if global_idx in selected else "☐"
+        row.append(InlineKeyboardButton(
+            f"{checkbox} {i + 1}",
+            callback_data=f"rss_toggle_{global_idx}"
+        ))
+        if len(row) == 5:
+            keyboard.append(row)
+            row = []
+    if row:
+        keyboard.append(row)
+
     # Add download button if selections
     if selected:
         keyboard.append([
@@ -456,35 +468,34 @@ async def _display_rss_page(query, context: ContextTypes.DEFAULT_TYPE, page: int
                 callback_data="rss_download_selected"
             )
         ])
-    
+
     # Navigation buttons
     nav_buttons = []
     if page > 0:
-        nav_buttons.append(InlineKeyboardButton("◀️ Previous", callback_data=f"rss_page_{page-1}"))
-    
-    nav_buttons.append(InlineKeyboardButton(f"📄 {page+1}/{total_pages}", callback_data="rss_page_info"))
-    
+        nav_buttons.append(InlineKeyboardButton("◀️ Prev", callback_data=f"rss_page_{page - 1}"))
+
+    nav_buttons.append(InlineKeyboardButton(f"📄 {page + 1}/{total_pages}", callback_data="rss_page_info"))
+
     if page < total_pages - 1:
-        nav_buttons.append(InlineKeyboardButton("Next ▶️", callback_data=f"rss_page_{page+1}"))
-    
+        nav_buttons.append(InlineKeyboardButton("Next ▶️", callback_data=f"rss_page_{page + 1}"))
+
     keyboard.append(nav_buttons)
     keyboard.append([InlineKeyboardButton("❌ Cancel", callback_data="rss_cancel")])
-    
-    escaped_title = escape_markdown_v2(feed_title)
+
     escaped_feed_name = escape_markdown_v2(feed_name)
+    escaped_title = escape_markdown_v2(feed_title)
     total_text = f"{len(entries)} torrent" if len(entries) == 1 else f"{len(entries)} torrents"
-    selected_text = f" \\| Selected: `{len(selected)}`" if selected else ""
-    page_info = f"Page {page+1}/{total_pages} \\({start_idx+1}\\-{end_idx}\\)"
-    
+    selected_text = f" \\| ✅ `{len(selected)}`" if selected else ""
+    page_info = f"Page {page + 1}/{total_pages} \\({start_idx + 1}\\-{end_idx}\\)"
+
     try:
         await query.edit_message_text(
             f"📡 *{escaped_feed_name}*\n\n"
             f"🎯 *{escaped_title}*\n\n"
-            f"📊 Total: `{total_text}`{selected_text}\n"
-            f"📄 {page_info}\n"
+            f"📊 {escape_markdown_v2(total_text)}{selected_text} \\| 📄 {page_info}\n"
             f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
-            "☐ Click to select \\| ✅ Selected\n"
-            "👇 Choose torrents to download:",
+            f"{items_text}\n"
+            "👆 Tap a number to select \\| ✅ Selected",
             parse_mode="MarkdownV2",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
