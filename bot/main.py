@@ -241,14 +241,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     user_name = query.from_user.first_name or "User"
 
     if query.data == "menu":
-        menu_message = "ℹ️ Context closed\\. Use the persistent keyboard below for global actions\\."
-        await query.edit_message_text(
-            menu_message,
-            parse_mode="MarkdownV2",
-        )
+        await query.edit_message_reply_markup(reply_markup=None)
         await context.bot.send_message(
             chat_id=chat_id,
-            text="ℹ️ Choose your next action from the keyboard\\.",
+            text="ℹ️ Use the keyboard below to continue\\.",
             parse_mode="MarkdownV2",
             reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
         )
