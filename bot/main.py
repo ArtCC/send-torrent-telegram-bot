@@ -466,11 +466,11 @@ async def setup_bot_commands(application: Application) -> None:
         BotCommand("menu", "🎯 Show global navigation keyboard"),
         BotCommand("help", "📖 Show help and usage guide"),
         BotCommand("status", "📊 Check bot status and info"),
-        BotCommand("chatid", "🔑 Show your Chat ID"),
-        BotCommand("author", "👨‍💻 About the author"),
-        BotCommand("setrss", "📡 Add RSS feed: /setrss <URL> <name>"),
         BotCommand("browse", "🔎 Browse your RSS feeds"),
+        BotCommand("setrss", "📡 Add RSS feed: /setrss <URL> <name>"),
         BotCommand("clearrss", "🗑️ Manage and delete RSS feeds"),
+        BotCommand("chatid", "🔑 Show your Chat ID"),
+        BotCommand("author", "👨‍💻 About the author")
     ]
     await application.bot.set_my_commands(commands)
 
@@ -509,14 +509,14 @@ def main() -> None:
 
     # Add handlers
     application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CommandHandler("menu", menu_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("status", status_command))
-    application.add_handler(CommandHandler("menu", menu_command))
+    application.add_handler(CommandHandler("browse", browse_command))
+    application.add_handler(CommandHandler("setrss", setrss_command))
+    application.add_handler(CommandHandler("clearrss", clearrss_command))
     application.add_handler(CommandHandler("chatid", chatid_command))
     application.add_handler(CommandHandler("author", author_command))
-    application.add_handler(CommandHandler("setrss", setrss_command))
-    application.add_handler(CommandHandler("browse", browse_command))
-    application.add_handler(CommandHandler("clearrss", clearrss_command))
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_other_messages))
