@@ -79,15 +79,11 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not is_authorized(chat_id):
         logger.warning(f"Unauthorized access attempt from chat ID: {chat_id}")
         await update.message.reply_text(
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "🚫 *ACCESS DENIED*\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "⛔ You are not authorized to use\n"
-            "this bot\\.\n\n"
-            "🔑 *Your Chat ID:* `{}`\n\n"
-            "💡 Add this ID to `ALLOWED_CHAT_IDS`\n"
-            "to gain access\\.\n\n"
-            "Use /start for more info\\.".format(chat_id),
+            f"🚫 *ACCESS DENIED*\n\n"
+            f"⛔ You are not authorized to use this bot\\.\n\n"
+            f"🔑 *Your Chat ID:* `{chat_id}`\n\n"
+            "💡 Add this ID to `ALLOWED_CHAT_IDS` to gain access\\.\n\n"
+            "Use /start for more info\\.",
             parse_mode="MarkdownV2",
             reply_markup=get_persistent_keyboard(has_rss=False),
         )
@@ -100,14 +96,10 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     # Check if file is a torrent
     if not file_name.lower().endswith(".torrent"):
         await update.message.reply_text(
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "⚠️ *INVALID FILE*\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "⚠️ *INVALID FILE*\n\n"
             "❌ This is not a torrent file\\!\n\n"
-            "📦 Please send only files with\n"
-            "`.torrent` extension\\.\n\n"
-            "💡 Drag \\& drop your torrent file\n"
-            "or click the attachment button\\.",
+            "📦 Please send only files with `.torrent` extension\\.\n\n"
+            "💡 Drag \\& drop your torrent file or click the attachment button\\.",
             parse_mode="MarkdownV2",
             reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
         )
@@ -168,19 +160,13 @@ async def send_batch_summary(update: Update, context: ContextTypes.DEFAULT_TYPE,
             if file.success:
                 escaped_name = escape_markdown_v2(file.name)
                 success_message = (
-                    f"━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"✅ *SUCCESS\\!*\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"✅ *SUCCESS\\!*\n\n"
                     f"🎉 Torrent received and saved\\!\n\n"
-                    f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
-                    f"  📁 *File Details*\n"
-                    f"  • Name: `{escaped_name}`\n"
-                    f"  • Size: `{file.size:.2f} KB`\n"
-                    f"  • Status: `QUEUED`\n"
-                    f"┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-                    f"🚀 Your torrent client will pick\n"
-                    f"it up automatically\\!\n\n"
-                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📁 *File Details*\n"
+                    f"• Name: `{escaped_name}`\n"
+                    f"• Size: `{file.size:.2f} KB`\n"
+                    f"• Status: `QUEUED`\n\n"
+                    f"🚀 Your torrent client will pick it up automatically\\!\n\n"
                     f"💚 Happy downloading, *{user_name}*\\!"
                 )
                 await context.bot.send_message(
@@ -193,13 +179,9 @@ async def send_batch_summary(update: Update, context: ContextTypes.DEFAULT_TYPE,
                 await context.bot.send_message(
                     chat_id=chat_id,
                     text=(
-                        "━━━━━━━━━━━━━━━━━━━━━━\n"
-                        "❌ *ERROR*\n"
-                        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                        "⚠️ Failed to save the torrent\n"
-                        "file\\. Please try again\\.\n\n"
-                        "🔧 If the problem persists,\n"
-                        "contact the administrator\\."
+                        "❌ *ERROR*\n\n"
+                        "⚠️ Failed to save the torrent file\\. Please try again\\.\n\n"
+                        "🔧 If the problem persists, contact the administrator\\."
                     ),
                     parse_mode="MarkdownV2",
                     reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
@@ -226,17 +208,11 @@ async def send_batch_summary(update: Update, context: ContextTypes.DEFAULT_TYPE,
                 file_list += f"{idx}\\. `{escaped_name}`\n"
         
         summary_message = (
-            f"━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"✅ *SUCCESS\\!*\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"✅ *SUCCESS\\!*\n\n"
             f"🎉 Multiple torrents received\\!\n\n"
-            f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
-            f"  📁 *Files Processed*\n\n"
+            f"📁 *Files Processed*\n\n"
             f"{file_list}"
-            f"┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-            f"🚀 Your torrent client will pick\n"
-            f"them up automatically\\!\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"🚀 Your torrent client will pick them up automatically\\!\n\n"
             f"💚 Happy downloading, *{user_name}*\\!"
         )
         
@@ -309,9 +285,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     elif query.data == "help":
         help_message = (
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
             "📖 *HELP GUIDE*\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "\n\n"
             "*Available Commands:*\n\n"
             "🏠 `/start` \\- Main menu \\& welcome\n"
             "❓ `/help` \\- Show this help guide\n"
@@ -320,7 +295,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             "📡 `/setrss <URL> <name>` \\- Add RSS\n"
             "🔎 `/browse` \\- Browse your RSS feeds\n"
             "🗑️ `/clearrss` \\- Manage RSS feeds\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "\n\n"
             "*Quick Actions:*\n\n"
             "• Send any `.torrent` file\n"
             "• Use the menu buttons\n"
@@ -343,20 +318,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             torrent_count = 0
 
         status_message = (
-            f"━━━━━━━━━━━━━━━━━━━━━━\n"
             f"📊 *BOT STATUS*\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"\n\n"
             f"🟢 *System:* `ONLINE`\n\n"
-            f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
             f"  🔑 *Your Access*\n"
             f"     {auth_icon} `{auth_text}`\n"
-            f"┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
             f"📁 *Watch Folder:*\n"
             f"   `{WATCH_FOLDER}`\n\n"
             f"📊 *Statistics:*\n"
             f"   • Authorized Users: `{len(ALLOWED_CHAT_IDS)}`\n"
             f"   • Torrents in Queue: `{torrent_count}`\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"\n"
             f"🕐 Last checked: `Now`"
         )
         await query.edit_message_text(
@@ -365,16 +337,15 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     elif query.data == "howto":
         howto_message = (
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
             "📋 *HOW TO USE*\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "\n\n"
             "*Step\\-by\\-step Guide:*\n\n"
             "1️⃣ Find a `.torrent` file\n"
             "2️⃣ Send it to this bot\n"
             "3️⃣ Wait for confirmation\n"
             "4️⃣ Check your torrent client\n"
             "5️⃣ Start downloading\\!\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "\n\n"
             "✨ *Pro Tips:*\n\n"
             "• Only `.torrent` files accepted\n"
             "• Files saved instantly\n"
@@ -388,12 +359,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     elif query.data == "chatid":
         chat_id_message = (
-            f"━━━━━━━━━━━━━━━━━━━━━━\n"
             f"🔑 *YOUR CHAT ID*\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"\n\n"
             f"👤 *User:* {user_name}\n"
             f"🆔 *Chat ID:* `{chat_id}`\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"\n\n"
             f"💡 *Usage:*\n\n"
             f"Add this ID to the\n"
             f"`ALLOWED_CHAT_IDS` variable\n"
@@ -408,15 +378,14 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     elif query.data == "author":
         author_message = (
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
             "👨‍💻 *AUTHOR*\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "\n\n"
             "*Arturo Carretero Calvo*\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "\n\n"
             "💻 *GitHub:*\n"
             "[github\\.com/ArtCC](https://github.com/ArtCC)\n\n"
             "🚀 Check out my other projects\\!\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "\n\n"
             "✨ *Built with:*\n"
             "GitHub Copilot \(Claude Sonnet 4\\.5\)\n\n"
             "📄 *License:* Apache 2\\.0"
@@ -449,9 +418,8 @@ async def handle_other_messages(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     await update.message.reply_text(
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
         "ℹ️ *INFO*\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "\n\n"
         "📦 Please send me a `.torrent` file\\.\n\n"
         "Use the persistent keyboard or slash commands for navigation\\.",
         parse_mode="MarkdownV2",

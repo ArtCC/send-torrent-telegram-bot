@@ -41,9 +41,7 @@ async def setrss_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Check if URL and name were provided
     if not context.args or len(context.args) < 2:
         await update.message.reply_text(
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "📡 *SET RSS FEED*\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "📡 *SET RSS FEED*\n\n"
             "⚠️ Please provide URL and name\\!\n\n"
             "*Usage:*\n"
             "`/setrss <URL> <name>`\n\n"
@@ -77,13 +75,10 @@ async def setrss_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         escaped_url_display = escape_markdown_v2(escaped_url_display)
         
         await update.message.reply_text(
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "✅ *RSS SAVED\\!*\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "✅ *RSS SAVED\\!*\n\n"
             f"🎉 RSS feed saved successfully\\!\n\n"
             f"📛 *Name:* `{escaped_name}`\n"
             f"🔗 *URL:* `{escaped_url_display}`\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
             "💡 Use `/browse` to view your feeds\\!\n"
             "🗑️ Use `/clearrss` to manage them\\.",
             parse_mode="MarkdownV2",
@@ -116,14 +111,9 @@ async def browse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     if not feeds:
         await update.message.reply_text(
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "📡 *NO RSS FEEDS*\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "⚠️ You haven't configured any\n"
-            "RSS feeds yet\\!\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
-            "💡 Use `/setrss <URL> <name>`\n"
-            "to add your first RSS feed\\.",
+            "📡 *NO RSS FEEDS*\n\n"
+            "⚠️ You haven't configured any RSS feeds yet\\!\n\n"
+            "💡 Use `/setrss <URL> <name>` to add your first RSS feed\\.",
             parse_mode="MarkdownV2",
             reply_markup=get_persistent_keyboard(has_rss=has_rss(chat_id)),
         )
@@ -139,9 +129,7 @@ async def browse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     keyboard.append([InlineKeyboardButton("🔙 Back", callback_data="menu")])
     
     await update.message.reply_text(
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "📡 *YOUR RSS FEEDS*\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "📡 *YOUR RSS FEEDS*\n\n"
         f"📊 You have `{len(feeds)}/{MAX_RSS_FEEDS}` feeds\\.\n\n"
         "👇 Select a feed to browse:",
         parse_mode="MarkdownV2",
@@ -183,9 +171,7 @@ async def clearrss_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     keyboard.append([InlineKeyboardButton("🔙 Back", callback_data="menu")])
     
     await update.message.reply_text(
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "🗑️ *DELETE RSS FEED*\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "🗑️ *DELETE RSS FEED*\n\n"
         "⚠️ Select a feed to delete:\n\n"
         "👇 Choose carefully:",
         parse_mode="MarkdownV2",
@@ -272,11 +258,8 @@ async def handle_rss_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     ]
     
     await query.edit_message_text(
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "⚠️ *CONFIRM DELETE*\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"Are you sure you want to delete\n"
-        f"the RSS feed `{escaped_name}`\\?\n\n"
+        "⚠️ *CONFIRM DELETE*\n\n"
+        f"Are you sure you want to delete the RSS feed `{escaped_name}`\\?\n\n"
         "⚠️ This action cannot be undone\\!",
         parse_mode="MarkdownV2",
         reply_markup=InlineKeyboardMarkup(keyboard)
@@ -294,14 +277,9 @@ async def handle_rss_confirm_delete(update: Update, context: ContextTypes.DEFAUL
     if delete_rss_url(chat_id, feed_name):
         escaped_name = escape_markdown_v2(feed_name)
         await query.edit_message_text(
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "✅ *RSS DELETED\\!*\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"🗑️ Feed `{escaped_name}` has been\n"
-            "removed successfully\\!\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
-            "💡 Use `/setrss <URL> <name>`\n"
-            "to add a new feed\\.",
+            "✅ *RSS DELETED\\!*\n\n"
+            f"🗑️ Feed `{escaped_name}` has been removed successfully\\!\n\n"
+            "💡 Use `/setrss <URL> <name>` to add a new feed\\.",
             parse_mode="MarkdownV2",
             reply_markup=get_back_keyboard()
         )
@@ -339,9 +317,7 @@ async def handle_rss_cancel_delete(update: Update, context: ContextTypes.DEFAULT
     keyboard.append([InlineKeyboardButton("🔙 Back", callback_data="menu")])
     
     await query.edit_message_text(
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "🗑️ *DELETE RSS FEED*\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "🗑️ *DELETE RSS FEED*\n\n"
         "⚠️ Select a feed to delete:\n\n"
         "👇 Choose carefully:",
         parse_mode="MarkdownV2",
@@ -358,14 +334,9 @@ async def handle_rss_browse(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     
     if not feeds:
         await query.edit_message_text(
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "📡 *NO RSS FEEDS*\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "⚠️ You haven't configured any\n"
-            "RSS feeds yet\\!\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
-            "💡 Use `/setrss <URL> <name>`\n"
-            "to add your first RSS feed\\.",
+            "📡 *NO RSS FEEDS*\n\n"
+            "⚠️ You haven't configured any RSS feeds yet\\!\n\n"
+            "💡 Use `/setrss <URL> <name>` to add your first RSS feed\\.",
             parse_mode="MarkdownV2",
             reply_markup=get_back_keyboard()
         )
@@ -422,9 +393,7 @@ async def handle_rss_browse(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     keyboard.append([InlineKeyboardButton("🔙 Back", callback_data="menu")])
     
     await query.edit_message_text(
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "📡 *YOUR RSS FEEDS*\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "📡 *YOUR RSS FEEDS*\n\n"
         f"📊 You have `{len(feeds)}/{MAX_RSS_FEEDS}` feeds\\.\n\n"
         "👇 Select a feed to browse:",
         parse_mode="MarkdownV2",
@@ -509,14 +478,11 @@ async def _display_rss_page(query, context: ContextTypes.DEFAULT_TYPE, page: int
     
     try:
         await query.edit_message_text(
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"📡 *{escaped_feed_name}*\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📡 *{escaped_feed_name}*\n\n"
             f"🎯 *{escaped_title}*\n\n"
             f"📊 Total: `{total_text}`{selected_text}\n"
             f"📄 {page_info}\n"
             f"🎬 Movies \\| 📺 Series \\| 📦 Others\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
             "☐ Click to select \\| ✅ Selected\n"
             "👇 Choose torrents to download:",
             parse_mode="MarkdownV2",
@@ -664,17 +630,11 @@ async def handle_rss_download(update: Update, context: ContextTypes.DEFAULT_TYPE
         success_msg = "torrent" if len(downloaded) == 1 else "torrents"
         
         await query.edit_message_text(
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "✅ *SUCCESS\\!*\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "✅ *SUCCESS\\!*\n\n"
             f"🎉 {len(downloaded)} {success_msg} downloaded from RSS\\!\n\n"
-            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-            "  📁 *Downloaded Files*\n\n"
+            "📁 *Downloaded Files*\n\n"
             f"{file_list}"
-            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-            "🚀 Your torrent client will pick\n"
-            "them up automatically\\!\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
+            "🚀 Your torrent client will pick them up automatically\\!\n\n"
             f"💚 Happy downloading, *{user_name}*\\!",
             parse_mode="MarkdownV2",
             reply_markup=get_back_keyboard()

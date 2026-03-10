@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is inspired by Keep a Changelog, and this project follows semantic versioning.
 
+## [0.0.9] - 2026-03-10
+
+### Changed
+- Removed decorative dividers (━━━) and box-drawing characters from all bot messages.
+- Unified message style across all handlers: consistent line breaks, no split phrases, no extra blank lines.
+- Standardized message structure: title on first line, content always starts after a double newline.
+
 ## [0.0.8] - 2026-03-10
 
 ### Added

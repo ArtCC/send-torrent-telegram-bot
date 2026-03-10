@@ -150,14 +150,14 @@ The bot can browse your private tracker RSS feeds and download torrents directly
 ### Available Commands
 
 - `/start` - Show welcome message and global navigation keyboard
+- `/menu` - Re-show global navigation keyboard
 - `/help` - Show help information and all commands
 - `/status` - Check bot status and authorization
-- `/menu` - Re-show global navigation keyboard
+- `/browse` - Browse and download from your RSS feeds
+- `/setrss <URL> <name>` - Add RSS feed with custom name (max 10)
+- `/clearrss` - Manage and delete your RSS feeds
 - `/chatid` - Show your Chat ID
 - `/author` - About the author
-- `/setrss <URL> <name>` - Add RSS feed with custom name (max 10)
-- `/browse` - Browse and download from your RSS feeds
-- `/clearrss` - Manage and delete your RSS feeds
 
 ## Persistent Keyboard
 

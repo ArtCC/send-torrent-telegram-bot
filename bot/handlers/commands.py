@@ -26,17 +26,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     auth_emoji = "✅" if is_auth else "⚠️"
 
     welcome_message = (
-        f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🤖 *SEND TORRENT BOT*\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"🤖 *SEND TORRENT BOT*\n\n"
         f"👋 Welcome *{user_name}*\\!\n\n"
-        f"I help you manage torrents remotely\\.\n"
-        f"Just send me a `.torrent` file and I'll\n"
-        f"handle the rest\\! 🚀\n\n"
-        f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
-        f"  {auth_emoji} *Authorization Status*\n"
-        f"     {'`AUTHORIZED`' if is_auth else '`NOT AUTHORIZED`'}\n"
-        f"┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+        f"I help you manage torrents remotely\\. Just send me a `.torrent` file and I'll handle the rest\\! 🚀\n\n"
+        f"{auth_emoji} *Authorization:* {'`AUTHORIZED`' if is_auth else '`NOT AUTHORIZED`'}\n\n"
         f"💡 Use the menu below to get started\\!"
     )
 
@@ -51,18 +44,15 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     """Handle /help command."""
     chat_id = update.effective_chat.id
     help_message = (
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "📖 *HELP GUIDE*\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "📖 *HELP GUIDE*\n\n"
         "*Available Commands:*\n\n"
         "🏠 `/start` \\- Main menu \\& welcome\n"
+        "🔍 `/menu` \\- Show interactive menu\n"
         "❓ `/help` \\- Show this help guide\n"
         "📊 `/status` \\- Check bot status\n"
-        "🔍 `/menu` \\- Show interactive menu\n"
-        "📡 `/setrss <URL> <name>` \\- Add RSS\n"
         "🔎 `/browse` \\- Browse your RSS feeds\n"
+        "📡 `/setrss <URL> <name>` \\- Add RSS\n"
         "🗑️ `/clearrss` \\- Manage RSS feeds\n\n"
-        "━━━━━━━━━━━━━━━━━━━━\n\n"
         "*Quick Actions:*\n\n"
         "• Send any `.torrent` file\n"
         "• Use the menu buttons\n"
@@ -93,20 +83,13 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         torrent_count = 0
 
     status_message = (
-        f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📊 *BOT STATUS*\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"📊 *BOT STATUS*\n\n"
         f"🟢 *System:* `ONLINE`\n\n"
-        f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
-        f"  🔑 *Your Access*\n"
-        f"     {auth_icon} `{auth_text}`\n"
-        f"┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-        f"📁 *Watch Folder:*\n"
-        f"   `{WATCH_FOLDER}`\n\n"
-        f"📊 *Statistics:*\n"
-        f"   • Authorized Users: `{len(ALLOWED_CHAT_IDS)}`\n"
-        f"   • Torrents in Queue: `{torrent_count}`\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"🔑 *Your Access:* {auth_icon} `{auth_text}`\n\n"
+        f"📁 *Watch Folder:* `{WATCH_FOLDER}`\n\n"
+        f"*Statistics:*\n"
+        f"• Authorized Users: `{len(ALLOWED_CHAT_IDS)}`\n"
+        f"• Torrents in Queue: `{torrent_count}`\n\n"
         f"🕐 Last checked: `Now`"
     )
 
@@ -138,18 +121,11 @@ async def chatid_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_name = update.effective_user.first_name or "User"
 
     chat_id_message = (
-        f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🔑 *YOUR CHAT ID*\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"🔑 *YOUR CHAT ID*\n\n"
         f"👤 *User:* {user_name}\n"
         f"🆔 *Chat ID:* `{chat_id}`\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"💡 *Usage:*\n\n"
-        f"Add this ID to the\n"
-        f"`ALLOWED_CHAT_IDS` variable\n"
-        f"in your `.env` file\\.\n\n"
-        f"Example:\n"
-        f"`ALLOWED_CHAT_IDS={chat_id}`\n\n"
+        f"💡 *Usage:* Add this ID to the `ALLOWED_CHAT_IDS` variable in your `.env` file\\.\n\n"
+        f"Example: `ALLOWED_CHAT_IDS={chat_id}`\n\n"
         f"⚠️ Keep this ID private\\!"
     )
 
@@ -164,17 +140,11 @@ async def author_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     """Handle /author command."""
     chat_id = update.effective_chat.id
     author_message = (
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "👨‍💻 *AUTHOR*\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "👨‍💻 *AUTHOR*\n\n"
         "*Arturo Carretero Calvo*\n\n"
-        "━━━━━━━━━━━━━━━━━━━━\n\n"
-        "💻 *GitHub:*\n"
-        "[github\\.com/ArtCC](https://github.com/ArtCC)\n\n"
+        "💻 *GitHub:* [github\\.com/ArtCC](https://github.com/ArtCC)\n\n"
         "🚀 Check out my other projects\\!\n\n"
-        "━━━━━━━━━━━━━━━━━━━━\n\n"
-        "✨ *Built with:*\n"
-        "GitHub Copilot \(Claude Sonnet 4\\.5\)\n\n"
+        "✨ *Built with:* GitHub Copilot \(Claude Sonnet 4\\.5\)\n\n"
         "📄 *License:* Apache 2\\.0"
     )
 
